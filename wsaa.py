@@ -82,11 +82,17 @@ class WSAA():
         dcn = 'wsaa' if self.connection == 'prod' else 'wsaahomo'
         dest = 'cn=' + dcn + ',o=afip,c=ar,serialNumber=CUIT 33693450239'
 
+        # Obtengo la hora local del servidor de tiempo de AFIP
+        timestamp = utils.afip_ntp_time()
+        current_time = datetime.fromtimestamp(timestamp).replace(microsecond=0)
+
         # Establezco los formatos de tiempo para los tags generationTime y
         # expirationTime (+ 30' de generationTime) en formato ISO 8601
-        current_time = datetime.now().replace(microsecond=0)
         generation_time = current_time.isoformat()
         expiration_time = (current_time + timedelta(minutes=30)).isoformat()
+
+        # Obtengo la zona horaria del servidor de tiempo AFIP
+        timezone = utils.afip_timezone(timestamp)
 
         # Creo la estructura del ticket de acceso según especificación técnica
         # de AFIP
@@ -96,8 +102,8 @@ class WSAA():
                     #builder.E.source(), # campo opcional
                     builder.E.destination(dest),
                     builder.E.uniqueID(str(random.randint(0, 4294967295))),
-                    builder.E.generationTime(str(generation_time + '-03:00')),
-                    builder.E.expirationTime(str(expiration_time + '-03:00')),
+                    builder.E.generationTime(str(generation_time) + timezone),
+                    builder.E.expirationTime(str(expiration_time) + timezone),
                 ),
                 builder.E.service(self.web_service),
                 version='1.0'
@@ -108,6 +114,7 @@ class WSAA():
         )
 
         return str(tra, 'utf-8')
+'''
 
     def sign_tra(self, tra, cert=CERT, privatekey=PRIVATE_KEY, passphrase=''):
         """
@@ -128,7 +135,7 @@ class WSAA():
         except Exception as e:
             if e.errno == 2:
                 return warnings.warn('OpenSSL no disponible en PATH')
-
+'''
 '''
     def validate_xml(schema_file, xml_file):
         xsd_doc = etree.parse(schema_file)
