@@ -33,12 +33,16 @@ import argparse
 import logging
 import random
 import sys
+from base64 import b64encode
 from datetime import datetime, timedelta
+from subprocess import PIPE, Popen
 
 from lxml import builder, etree
-from zeep import Client
 
 from functions import utils, validation
+
+#from zeep import Client
+
 
 """
 import hashlib
@@ -46,8 +50,6 @@ import os
 import traceback
 import unicodedata
 import warnings
-from base64 import b64encode
-from subprocess import PIPE, Popen
 """
 
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
@@ -69,10 +71,12 @@ class WSAA():
     """
     def __init__(self, data):
         self.connection = data['connection']
-        self.cuit = data['cuit']
-        self.web_service = data['web_service']
+        self.certificate = data['certificate']
+        self.private_key = data['private_key']
+        self.passphrase = data['passphrase']
+        self.cacert = data['cacert']
         self.ttl = data['ttl']
-        self.output = data['output']
+        self.web_service = data['web_service']
 
     def create_tra(self):
         """
@@ -106,38 +110,30 @@ class WSAA():
                     builder.E.expirationTime(str(expiration_time) + timezone),
                 ),
                 builder.E.service(self.web_service),
-                version="1.0"
+                version='1.0'
             ),
             pretty_print=True,
             xml_declaration=True,
-            encoding="UTF-8"
+            encoding='UTF-8'
         )
 
-        # Devuelvo el string XML reemplazando los single quotes que utiliza
-        # lxml por double quotes para alinearlo a Especificación Técnica AFIP
-        return str(tra, 'utf-8').replace("'", '"')
+        # Devuelvo el ticket de acceso en formato XML
+        return tra
 
-
-    #def sign_tra(self, tra, cert=CERT, privatekey=PRIVATE_KEY, passphrase=''):
+    def sign_tra(self, tra):
         """
-        Firma el TRA con PKCS#7 el TRA y devuelve el CMS requerido según
+        Firma el TRA con PKCS#7 y devuelve el CMS requerido según
         especificación técnica de AFIP
-        
-
-        try:
-            out = Popen(
-                [
-                    "openssl", "smime", "-sign", "-signer", cert, "-inkey",
-                    privatekey, "-outform", "DER", "-nodetach"
-                ],
-                stdin=PIPE,
-                stdout=PIPE,
-                stderr=PIPE).communicate(tra)[0]
-            return b64encode(out)
-        except Exception as e:
-            if e.errno == 2:
-                return warnings.warn('OpenSSL no disponible en PATH')
         """
+        try:
+            with Popen([
+                'openssl', 'smime', '-sign', '-signer', self.certificate,
+                '-inkey', self.private_key, '-outform', 'DER', '-nodetach'
+                ], stdin=PIPE, stdout=PIPE, stderr=PIPE) as output:
+                pkcs7 = output.communicate(tra)[0]
+                return b64encode(pkcs7)
+        except FileNotFoundError:
+            return
 
 '''
     def validate_xml(schema_file, xml_file):
@@ -296,7 +292,7 @@ def cli_parser(argv=None):
     devuelve el listado completo.
     """
     # TODO: crear una clase y transferir el contenido a functions/utils
-    # TODO: taducir mensajes internos de argparse al español
+    # TODO: traducir mensajes internos de argparse al español
 
     # Tupla con los WebServices soportados
     web_services = ('ws_sr_padron_a4', 'wsfev1',)
@@ -409,7 +405,10 @@ def main(cli_args, debug):
                          'lectura')
 
     # Frase Secreta
-    data['passphrase'] = config_data['passphrase']
+    data['passphrase'] = (
+        config_data['passphrase']
+        if config_data['passphrase']
+        else None)
 
     # Certificado de Autoridad Certificante (CA AFIP)
     data['cacert'] = config_data['cacert']
@@ -441,7 +440,7 @@ def main(cli_args, debug):
         logging.info('| Certificado:   %s', data['certificate'])
         logging.info('| Clave Privada: %s', data['private_key'])
         logging.info('| Frase Secreta: %s',
-                     '******' if data['passphrase'] else '')
+                     '******' if data['passphrase'] else None)
         logging.info('| CA AFIP:       %s', data['cacert'])
         logging.info('| URL WSDL:      %s', data['wsdl_url'])
         logging.info('| URL WSAA:      %s', data['wsaa_url'])
@@ -458,7 +457,14 @@ def main(cli_args, debug):
     # Muestro el TRA via stderr si estoy en modo debug
     if args['debug'] or debug:
         logging.info('|=================  TRA  =================')
-        logging.info('\n' + ticket)
+        logging.info('\n' + str(ticket, 'utf-8'))
+
+    # Firmo el ticket
+    sign = wsaa.sign_tra(ticket)
+    if not sign:
+        raise SystemExit('No se encontró el ejecutable openssl')
+
+
 
 '''
 
@@ -477,24 +483,6 @@ def main(cli_args, debug):
 
     ticket = wsaa.authenticate(WEB_SERVICE, CERTIFICATE, PRIVATE_KEY, WSAA_URL,
                                proxy, wrapper, CACERT)
-    if not ticket:
-        if DEBUG:
-            print >> sys.stderr, wsaa.traceback
-        raise SystemExit('Excepcion: {}'.format(wsaa.exception))
-    else:
-        print(ticket)
-
-    if wsaa.exception:
-        print >> sys.stderr, wsaa.exception
-
-    if DEBUG:
-        print('Source: {}'.format(wsaa.get_xml_tag('source')))
-        print('UniqueID Time: {}'.format(wsaa.get_xml_tag('uniqueId')))
-        print('Generation Time: {}'.format(
-            wsaa.get_xml_tag('generationTime')))
-        print('Expiration Time: {}'.format(
-            wsaa.get_xml_tag('expirationTime')))
-        print('Expiro? {}'.format(wsaa.expired()))
 '''
 
 if __name__ == '__main__':
