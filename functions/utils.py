@@ -46,7 +46,7 @@ def read_config(file, *, section=''):
 # Fecha
 def afip_ntp_time(ntp_server='time.afip.gob.ar'):
     """
-    Devuelve la fecha y hora obtenida del servidor de hora de AFIP
+    Devuelve la fecha y hora obtenida del servidor de tiempo de AFIP
     """
     client = ntplib.NTPClient()
     response = client.request(ntp_server)
