@@ -106,21 +106,23 @@ class WSAA():
                     builder.E.expirationTime(str(expiration_time) + timezone),
                 ),
                 builder.E.service(self.web_service),
-                version='1.0'
+                version="1.0"
             ),
             pretty_print=True,
             xml_declaration=True,
-            encoding='UTF-8'
+            encoding="UTF-8"
         )
 
-        return str(tra, 'utf-8')
-'''
+        # Devuelvo el string XML reemplazando los single quotes que utiliza
+        # lxml por double quotes para alinearlo a Especificación Técnica AFIP
+        return str(tra, 'utf-8').replace("'", '"')
 
-    def sign_tra(self, tra, cert=CERT, privatekey=PRIVATE_KEY, passphrase=''):
+
+    #def sign_tra(self, tra, cert=CERT, privatekey=PRIVATE_KEY, passphrase=''):
         """
         Firma el TRA con PKCS#7 el TRA y devuelve el CMS requerido según
         especificación técnica de AFIP
-        """
+        
 
         try:
             out = Popen(
@@ -135,7 +137,8 @@ class WSAA():
         except Exception as e:
             if e.errno == 2:
                 return warnings.warn('OpenSSL no disponible en PATH')
-'''
+        """
+
 '''
     def validate_xml(schema_file, xml_file):
         xsd_doc = etree.parse(schema_file)
@@ -405,7 +408,7 @@ def main(cli_args, debug):
         raise SystemExit('El archivo de clave privada no tiene permisos de '
                          'lectura')
 
-    # Frase secreta
+    # Frase Secreta
     data['passphrase'] = config_data['passphrase']
 
     # Certificado de Autoridad Certificante (CA AFIP)
@@ -430,32 +433,34 @@ def main(cli_args, debug):
     # Directorio donde se guardará la salida JSON
     data['output'] = config_data['output']
 
-    # Si se activó la bandera debug o está definida de manera general para el
-    # script envío los mensajes a stderr
+    # Muestro las opciones de configuración via stderr si estoy en modo debug
     if args['debug'] or debug:
         logging.basicConfig(stream=sys.stderr, level=logging.INFO)
-
-        logging.info('|====          Configuración          ====')
+        logging.info('|============  Configuración  ============')
         logging.info('| CUIT:          %s', data['cuit'])
         logging.info('| Certificado:   %s', data['certificate'])
         logging.info('| Clave Privada: %s', data['private_key'])
-        logging.info('| Frase Secreta: %s', '******' if data['passphrase'] else '')
+        logging.info('| Frase Secreta: %s',
+                     '******' if data['passphrase'] else '')
         logging.info('| CA AFIP:       %s', data['cacert'])
         logging.info('| URL WSDL:      %s', data['wsdl_url'])
         logging.info('| URL WSAA:      %s', data['wsaa_url'])
         logging.info('| WebService:    %s', data['web_service'])
         logging.info('| TRA TTL:       %i', data['ttl'])
         logging.info('| Salida:        %s', data['output'])
-        logging.info('|=========================================')
-
 
     # Creo el objeto de autenticación y autorización
     wsaa = WSAA(data)
 
-    print(wsaa.create_tra())
+    # Creo el Ticket de Requerimiento de Acceso (TRA)
+    ticket = wsaa.create_tra()
+
+    # Muestro el TRA via stderr si estoy en modo debug
+    if args['debug'] or debug:
+        logging.info('|=================  TRA  =================')
+        logging.info('\n' + ticket)
 
 '''
-    print >> sys.stderr, "WSAA Version %s %s" % (WSAA.version, HOMO)
 
     if '--proxy' in args:
         proxy = sys.argv[sys.argv.index("--proxy") + 1]
