@@ -1,0 +1,2 @@
+configparser==3.5.0
+zeep==2.4.0

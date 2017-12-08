@@ -1,0 +1,27 @@
+{
+    "wsaa": {
+        "cuit": "",
+        "test_cert": "config/certificates/testing.crt",
+        "prod_cert": "config/certificates/production.crt",
+        "private_key": "config/certificates/private.key",
+        "passphrase": "",
+        "cacert": "config/certificates/afip_ca_info.crt",
+        "test_wsaa": "https://wsaahomo.afip.gov.ar/ws/services/LoginCms",
+        "test_wsdl": "https://wsaahomo.afip.gov.ar/ws/services/LoginCms?WSDL",
+        "prod_wsaa": "https://wsaa.afip.gov.ar/ws/services/LoginCms",
+        "prod_wsdl": "https://wsaa.afip.gov.ar/ws/services/LoginCms?WSDL",
+        "ttl": 21600,
+        "output": "data/wsaa"
+    },
+    "wssrpadrona4": {
+        "output": "data/wssrpadrona4",
+        "test_url": "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA4?WSDL",
+        "prod_url": "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA4?WSDL"
+    },
+    "wsfev1": {
+        "input": "data/wsfev1/input.json",
+        "output": "data/wsfev1/output.json",
+        "test_url": "https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL",
+        "prod_url": "https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL"
+    }
+}
