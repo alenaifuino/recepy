@@ -82,5 +82,7 @@ def afip_timezone(timestamp):
     # timezone con format hh:mm
     if len(seconds) == 4:
         timezone = timezone + '0' + seconds
+    else:
+        timezone = timezone + seconds
 
     return timezone
