@@ -50,9 +50,9 @@ coverage.xml
 docs/_build/
 
 # Private Data
-config/certificates/testing.crt
-config/certificates/production.crt
-config/certificates/private.key
+config/certificates
+!config/certificates/afip_ca_info.crt
+!config/certificates/arba.crt
 data/
 afip-ws/
 *.old
