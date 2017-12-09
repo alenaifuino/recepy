@@ -70,6 +70,7 @@ class WSAA():
         self.output = data['output']
         self.web_service = data['web_service']
 
+
     def check_tra(self):
         """
         Verifica si ya existe un ticket de acceso y que sea válido
@@ -97,8 +98,7 @@ class WSAA():
                 # Verifico si la fecha de expiración es mayor que la de AFIP
                 if expiration_time > current_time:
                     return True
-
-                return False
+            return False
         except FileNotFoundError:
             return False
 
@@ -405,7 +405,7 @@ def main(cli_args, debug):
     wsaa = WSAA(data)
 
     # Verifico si existe un ticket y que no esté vencido y lo devuelvo
-    if not wsaa.check_tra():
+    if wsaa.check_tra():
         return data['output'] + '/' + 'ta_{}.xml'.format(data['web_service'])
 
     # Creo el Ticket de Requerimiento de Acceso (TRA)
@@ -422,9 +422,9 @@ def main(cli_args, debug):
         raise SystemExit('No se encontró el ejecutable openssl')
 
     # Autentico tl
-    response = wsaa.authenticate()
+    #response = wsaa.authenticate()
 
-    print(response)
+    #print(response)
 
 if __name__ == '__main__':
     main(sys.argv, DEBUG)
