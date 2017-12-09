@@ -93,3 +93,10 @@ def timestamp_to_datetime(timestamp, *, microsecond=0):
     Devuelve una fecha datetime según el timestamp recibido
     """
     return datetime.fromtimestamp(timestamp).replace(microsecond=microsecond)
+
+
+def get_afip_datetime():
+    """
+    Devuelve la fecha en formato datetime según el servidor de tiempo de AFIP
+    """
+    return timestamp_to_datetime(afip_ntp_time())
