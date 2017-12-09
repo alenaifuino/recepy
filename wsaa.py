@@ -71,7 +71,7 @@ class WSAA():
         self.web_service = data['web_service']
 
 
-    def check_tra(self):
+    def tra_exists(self):
         """
         Verifica si ya existe un ticket de acceso y que sea válido
         """
@@ -405,7 +405,7 @@ def main(cli_args, debug):
     wsaa = WSAA(data)
 
     # Verifico si existe un ticket y que no esté vencido y lo devuelvo
-    if wsaa.check_tra():
+    if wsaa.tra_exists():
         return data['output'] + '/' + 'ta_{}.xml'.format(data['web_service'])
 
     # Creo el Ticket de Requerimiento de Acceso (TRA)
