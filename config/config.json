@@ -10,7 +10,6 @@
         "test_wsdl": "https://wsaahomo.afip.gov.ar/ws/services/LoginCms?WSDL",
         "prod_wsaa": "https://wsaa.afip.gov.ar/ws/services/LoginCms",
         "prod_wsdl": "https://wsaa.afip.gov.ar/ws/services/LoginCms?WSDL",
-        "ttl": 21600,
         "output": "data/wsaa"
     },
     "wssrpadrona4": {
