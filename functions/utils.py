@@ -86,3 +86,10 @@ def afip_timezone(timestamp):
         timezone = timezone + seconds
 
     return timezone
+
+
+def timestamp_to_datetime(timestamp, *, microsecond=0):
+    """
+    Devuelve una fecha datetime según el timestamp recibido
+    """
+    return datetime.fromtimestamp(timestamp).replace(microsecond=microsecond)
