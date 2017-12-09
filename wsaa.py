@@ -34,28 +34,20 @@ import logging
 import random
 import sys
 from base64 import b64encode
-from datetime import datetime, timedelta
+from datetime import timedelta
 from subprocess import PIPE, Popen
 
+import dateutil.parser
 from lxml import builder, etree
 
 from functions import utils, validation
+from zeep import Client
 
-#from zeep import Client
-
-
-"""
-import hashlib
-import os
-import traceback
-import unicodedata
-import warnings
-"""
 
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.2.6'
+__version__ = '0.4.1'
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
@@ -75,8 +67,40 @@ class WSAA():
         self.private_key = data['private_key']
         self.passphrase = data['passphrase']
         self.cacert = data['cacert']
-        self.ttl = data['ttl']
+        self.output = data['output']
         self.web_service = data['web_service']
+
+    def check_tra(self):
+        """
+        Verifica si ya existe un ticket de acceso y que sea válido
+        """
+        # Establezco el nombre del archivo del TA
+        ta_filename = 'ta_{}.xml'.format(self.web_service)
+
+        # Verifico si ya existe un TA previo y es válido
+        try:
+            with open(self.output + '/' + ta_filename, 'r') as ta_xml:
+                # Obtengo el arbol XML y luego el elemento expirationTime
+                tree = etree.parse(ta_xml).getroot()
+                expiration_time = tree.find('header').find('expirationTime')
+        except FileNotFoundError:
+            return False
+
+        # Convierto el string expiration_time en formato datetime
+        expiration_time = dateutil.parser.parse(expiration_time.text)
+
+        # Obtengo la fechahora actual según el servidor de tiempo de AFIP
+        current_time = utils.get_afip_datetime()
+        # Obtengo el timezone de la fechahora de AFIP
+        timezone = utils.afip_timezone(current_time.timestamp())
+        # Convierto la fechahora de AFIP a formato aware datetime
+        current_time = dateutil.parser.parse(str(current_time) + timezone)
+
+        # Verifico si la fecha de expiración es mayor que la actual de AFIP
+        if expiration_time > current_time:
+            return True
+
+        return False
 
     def create_tra(self):
         """
@@ -87,16 +111,15 @@ class WSAA():
         dest = 'cn=' + dcn + ',o=afip,c=ar,serialNumber=CUIT 33693450239'
 
         # Obtengo la hora local del servidor de tiempo de AFIP
-        timestamp = utils.afip_ntp_time()
-        current_time = datetime.fromtimestamp(timestamp).replace(microsecond=0)
+        current_time = utils.get_afip_datetime()
 
         # Establezco los formatos de tiempo para los tags generationTime y
         # expirationTime (+ 30' de generationTime) en formato ISO 8601
         generation_time = current_time.isoformat()
-        expiration_time = (current_time + timedelta(minutes=30)).isoformat()
+        expiration_time = (current_time + timedelta(minutes=15)).isoformat()
 
         # Obtengo la zona horaria del servidor de tiempo AFIP
-        timezone = utils.afip_timezone(timestamp)
+        timezone = utils.afip_timezone(current_time.timestamp())
 
         # Creo la estructura del ticket de acceso según especificación técnica
         # de AFIP
@@ -117,7 +140,7 @@ class WSAA():
             encoding='UTF-8'
         )
 
-        # Devuelvo el ticket de acceso en formato XML
+        # Devuelvo el TRA generado
         return tra
 
     def sign_tra(self, tra):
@@ -130,19 +153,61 @@ class WSAA():
                 'openssl', 'smime', '-sign', '-signer', self.certificate,
                 '-inkey', self.private_key, '-outform', 'DER', '-nodetach'
                 ], stdin=PIPE, stdout=PIPE, stderr=PIPE) as output:
+                # Obtengo de la tupla devuelta por communicate sólo stdout
                 pkcs7 = output.communicate(tra)[0]
+
+                # Codifico en base64 y devuelvo el ticket firmado
                 return b64encode(pkcs7)
         except FileNotFoundError:
-            return
+            return False
+
+    def authenticate(self):
+        """
+        Autentica el ticket de acceso si no existe uno o está vencido
+
+        # Leo el ticket de acceso (si fue previamente solicitado)
+        if (not os.path.exists(fn) or os.path.getsize(fn) == 0
+                or os.path.getmtime(fn) + (DEFAULT_TTL) < time.time()):
+
+            # concectar con el web service:
+            if DEBUG:
+                print('Conectando al web service WSAA...')
+            ok = self.connect(cache, wsdl, proxy, wrapper, cacert)
+            if not ok or self.exception:
+                raise RuntimeError('Fallo la conexión: {}'.format(
+                    self.exception))
+
+            # llamar al método remoto para solicitar el TA
+            if DEBUG:
+                print('Llamando WSAA...')
+            ticket = self.login_cms(cms)
+            if not ticket:
+                raise RuntimeError('Ticket de acceso vacío: {}'.format(
+                    WSAA.exception))
+
+            # grabar el ticket de acceso para poder reutilizarlo luego
+            if DEBUG:
+                print('Grabando TA en {}...'.format(fn))
+            try:
+                open(fn, 'w').write(ticket)
+            except IOError:
+                self.exception = 'Imposible grabar ticket de acceso: {}'.format(
+                    fn)
+        else:
+            # leer el ticket de acceso del archivo en cache
+            if DEBUG:
+                print('Leyendo TA de {}...').format(fn)
+            ticket = open(fn, 'r').read()
+
+        # analizar el ticket de acceso y extraer los datos relevantes
+        self.analyze_xml(xml=ticket)
+        self.token = self.get_xml_tag('token')
+        self.sign = self.get_xml_tag('sign')
+
+        return ticket
+"""
 
 '''
-    def validate_xml(schema_file, xml_file):
-        xsd_doc = etree.parse(schema_file)
-        xsd = etree.XMLSchema(xsd_doc)
-        xml = etree.parse(xml_file)
-        return xsd.validate(xml)
-
-
     def call_wsaa(self, cms, url="", proxy=None):
         """Obtener ticket de autorización (TA) -version retrocompatible-"""
 
@@ -165,124 +230,6 @@ class WSAA():
 
         return ta_xml
 
-    def analyze_certificate(self, crt, binary=False):
-        """Carga un certificado digital y extrae los campos más importantes"""
-
-        from M2Crypto import BIO, X509
-
-        if binary:
-            bio = BIO.MemoryBuffer(crt)
-            x509 = X509.load_cert_bio(bio, X509.FORMAT_DER)
-        else:
-            if not crt.startswith("-----BEGIN CERTIFICATE-----"):
-                crt = open(crt).read()
-            bio = BIO.MemoryBuffer(crt)
-            x509 = X509.load_cert_bio(bio, X509.FORMAT_PEM)
-        if x509:
-            self.identity = x509.get_subject().as_text()
-            self.expiration = x509.get_not_after().get_datetime()
-            self.sender = x509.get_issuer().as_text()
-            self.x509_certificate = x509.as_text()
-        return True
-
-
-    #@inicializar_y_capturar_excepciones
-    def expired(self, fecha=None):
-        """Comprueba la fecha de expiración, devuelve si ha expirado"""
-
-        if not fecha:
-            fecha = self.get_xml_tag('expirationTime')
-        now = datetime.datetime.now()
-        d = datetime.datetime.strptime(fecha[:19], '%Y-%m-%dT%H:%M:%S')
-
-        return now > d
-
-    def authenticate(self,
-                     service,
-                     crt,
-                     key,
-                     wsdl=None,
-                     proxy=None,
-                     wrapper=None,
-                     cacert=None,
-                     cache=None,
-                     debug=False):
-        """Método unificado para obtener el ticket de acceso (cacheado)"""
-
-        self.throw_exceptions = True
-        try:
-            # sanity check: verificar las credenciales
-            for filename in (crt, key):
-                if not os.access(filename, os.R_OK):
-                    raise RuntimeError('Imposible abrir %s\n' % filename)
-
-            # creo el nombre para el archivo del TA (según credenciales y ws)
-            fn = 'TA-{}.xml'.format(
-                hashlib.md5(service + crt + key).hexdigest())
-
-            if cache:
-                fn = os.path.join(cache, fn)
-            else:
-                fn = os.path.join(self.install_dir, "cache", fn)
-
-            # leeo el ticket de acceso (si fue previamente solicitado)
-            if (not os.path.exists(fn) or os.path.getsize(fn) == 0
-                    or os.path.getmtime(fn) + (DEFAULT_TTL) < time.time()):
-                # ticket de acceso (TA) vencido, crear un nuevo req. (TRA)
-                if DEBUG:
-                    print('Creando TRA...')
-                tra = self.create_tra(service=service, ttl=DEFAULT_TTL)
-
-                # firmarlo criptográficamente
-                if DEBUG:
-                    print('Firmando TRA...')
-                cms = self.sign_tra(tra, crt, key)
-
-                # concectar con el web service:
-                if DEBUG:
-                    print('Conectando al web service WSAA...')
-                ok = self.connect(cache, wsdl, proxy, wrapper, cacert)
-                if not ok or self.exception:
-                    raise RuntimeError('Fallo la conexión: {}'.format(
-                        self.exception))
-
-                # llamar al método remoto para solicitar el TA
-                if DEBUG:
-                    print('Llamando WSAA...')
-                ticket = self.login_cms(cms)
-                if not ticket:
-                    raise RuntimeError('Ticket de acceso vacío: {}'.format(
-                        WSAA.exception))
-
-                # grabar el ticket de acceso para poder reutilizarlo luego
-                if DEBUG:
-                    print('Grabando TA en {}...'.format(fn))
-                try:
-                    open(fn, 'w').write(ticket)
-                except IOError:
-                    self.exception = 'Imposible grabar ticket de acceso: {}'.format(
-                        fn)
-            else:
-                # leer el ticket de acceso del archivo en cache
-                if DEBUG:
-                    print('Leyendo TA de {}...').format(fn)
-                ticket = open(fn, 'r').read()
-
-            # analizar el ticket de acceso y extraer los datos relevantes
-            self.analyze_xml(xml=ticket)
-            self.token = self.get_xml_tag('token')
-            self.sign = self.get_xml_tag('sign')
-        except:
-            ticket = ''
-            if not self.exception:
-                # avoid encoding problem when reporting exceptions to the user:
-                self.exception = traceback.format_exception_only(
-                    sys.exc_type, sys.exc_value)[0]
-                self.traceback = ''
-            if DEBUG or debug:
-                raise
-
-        return ticket
 '''
 
 def cli_parser(argv=None):
@@ -342,16 +289,13 @@ def cli_parser(argv=None):
         return vars(args)
 
 
-def main(cli_args, debug):
+def get_config_data(args):
     """
-    Función utilizada para la ejecución del script por línea de comandos
+    Obtengo los datos de configuración y devuelvo un diccionario con los mismos
     """
-    # Obtengo los parámetros pasados por línea de comandos
-    args = cli_parser(cli_args)
+    # TODO: crear una clase y transferir el contenido a functions/utils
 
-    # TODO: mover cada uno de las ramas siguientes a sus propias funciones
-
-    # Obtengo los datos de configuración
+    # Obtengo los datos del archivo de configuración
     if not validation.check_file_exists(CONFIG_FILE):
         raise SystemExit('No se encontró el archivo de configuración')
     elif not validation.check_file_permission(CONFIG_FILE, permission='r'):
@@ -423,14 +367,24 @@ def main(cli_args, debug):
     data['wsdl_url'] = config_data[data['connection'] + '_wsdl']
     data['wsaa_url'] = config_data[data['connection'] + '_wsaa']
 
-    # TTL a utilizar (default 6 horas)
-    data['ttl'] = int(config_data['ttl'])
-
     # Nombre del WebService al que se le solicitará ticket acceso
     data['web_service'] = args['web_service']
 
     # Directorio donde se guardará la salida JSON
     data['output'] = config_data['output']
+
+    return data
+
+
+def main(cli_args, debug):
+    """
+    Función utilizada para la ejecución del script por línea de comandos
+    """
+    # Obtengo los parámetros pasados por línea de comandos
+    args = cli_parser(cli_args)
+
+    # Obtengo los datos de configuración
+    data = get_config_data(args)
 
     # Muestro las opciones de configuración via stderr si estoy en modo debug
     if args['debug'] or debug:
@@ -445,11 +399,14 @@ def main(cli_args, debug):
         logging.info('| URL WSDL:      %s', data['wsdl_url'])
         logging.info('| URL WSAA:      %s', data['wsaa_url'])
         logging.info('| WebService:    %s', data['web_service'])
-        logging.info('| TRA TTL:       %i', data['ttl'])
         logging.info('| Salida:        %s', data['output'])
 
     # Creo el objeto de autenticación y autorización
     wsaa = WSAA(data)
+
+    # Verifico si existe un ticket y que no esté vencido y lo devuelvo
+    if not wsaa.check_tra():
+        return data['output'] + '/' + 'ta_{}.xml'.format(data['web_service'])
 
     # Creo el Ticket de Requerimiento de Acceso (TRA)
     ticket = wsaa.create_tra()
@@ -459,31 +416,15 @@ def main(cli_args, debug):
         logging.info('|=================  TRA  =================')
         logging.info('\n' + str(ticket, 'utf-8'))
 
-    # Firmo el ticket
-    sign = wsaa.sign_tra(ticket)
-    if not sign:
+    # Firmo el ticket y lo almaceno como string utf-8
+    cms = str(wsaa.sign_tra(ticket), 'utf-8')
+    if not cms:
         raise SystemExit('No se encontró el ejecutable openssl')
 
+    # Autentico tl
+    response = wsaa.authenticate()
 
-
-'''
-
-    if '--proxy' in args:
-        proxy = sys.argv[sys.argv.index("--proxy") + 1]
-        print >> sys.stderr, "Usando PROXY:", proxy
-    else:
-        proxy = None
-
-    if '--analizar' in sys.argv:
-        wsaa.analyze_certificate(CERTIFICATE)
-        print(wsaa.identity)
-        print(wsaa.expiration)
-        print(wsaa.sender)
-        print(wsaa.x509_certificate)
-
-    ticket = wsaa.authenticate(WEB_SERVICE, CERTIFICATE, PRIVATE_KEY, WSAA_URL,
-                               proxy, wrapper, CACERT)
-'''
+    print(response)
 
 if __name__ == '__main__':
     main(sys.argv, DEBUG)
