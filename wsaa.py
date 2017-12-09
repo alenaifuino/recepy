@@ -83,24 +83,24 @@ class WSAA():
                 # Obtengo el arbol XML y luego el elemento expirationTime
                 tree = etree.parse(ta_xml).getroot()
                 expiration_time = tree.find('header').find('expirationTime')
+
+                # Convierto el string expiration_time en formato datetime
+                expiration_time = dateutil.parser.parse(expiration_time.text)
+
+                # Obtengo la fechahora actual según el servidor de tiempo AFIP
+                ct_time = utils.get_afip_datetime()
+                # Obtengo el timezone de la fechahora de AFIP
+                timezone = utils.afip_timezone(ct_time.timestamp())
+                # Convierto la fechahora de AFIP a formato aware datetime
+                current_time = dateutil.parser.parse(str(ct_time) + timezone)
+
+                # Verifico si la fecha de expiración es mayor que la de AFIP
+                if expiration_time > current_time:
+                    return True
+
+                return False
         except FileNotFoundError:
             return False
-
-        # Convierto el string expiration_time en formato datetime
-        expiration_time = dateutil.parser.parse(expiration_time.text)
-
-        # Obtengo la fechahora actual según el servidor de tiempo de AFIP
-        current_time = utils.get_afip_datetime()
-        # Obtengo el timezone de la fechahora de AFIP
-        timezone = utils.afip_timezone(current_time.timestamp())
-        # Convierto la fechahora de AFIP a formato aware datetime
-        current_time = dateutil.parser.parse(str(current_time) + timezone)
-
-        # Verifico si la fecha de expiración es mayor que la actual de AFIP
-        if expiration_time > current_time:
-            return True
-
-        return False
 
     def create_tra(self):
         """
