@@ -392,22 +392,13 @@ def main(cli_args, debug):
     # Obtengo el arbol XML y luego los elementos requeridos
     with open(ticket, 'r') as xml:
         tree = etree.parse(xml).getroot()
-        token = etree.tostring(
-            tree.find('credentials').find('token'),
-            pretty_print=True,
-            encoding='utf-8')
-        sign = etree.tostring(
-            tree.find('credentials').find('sign'),
-            pretty_print=True,
-            encoding='utf-8')
-        expiration_time = etree.tostring(
-            tree.find('header').find('expirationTime'),
-            pretty_print=True,
-            encoding='utf-8')
+        token = tree.find('credentials').find('token').text
+        sign = tree.find('credentials').find('sign').text
+        expiration_time = tree.find('header').find('expirationTime').text
 
     print('Ticket de acceso guardado en: {}'.format(ticket))
-    print('Token: {}'.format(token))
-    print('Sign: {}'.format(sign))
+    print('Token: {}'.format(token[:75] + ' ...'))
+    print('Sign: {}'.format(sign[:75] + ' ...'))
     print('Expiration Time: {}'.format(expiration_time))
 
 if __name__ == '__main__':
