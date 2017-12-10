@@ -14,10 +14,10 @@ Módulo que permite obtener un ticket de autorización (TA) del
 WebService de Autenticación y Autorización (WSAA) de AFIP.
 
 Las operaciones que se realizan en este módulo son:
-    - Generar un "Ticket de Requerimiento de Acceso" (TRA) 
-    - Invocar el "Web Service de Autenticación y Autorización" (WSAA) 
-    - Interpretar el mensaje de respuesta del WSAA y obtener el "Ticket
-      de Acceso" (TA)
+    - Generar un "Ticket de Requerimiento de Acceso" (TRA)
+    - Invocar el "Web Service de Autenticación y Autorización" (WSAA)
+    - Interpretar el mensaje de respuesta del WSAA y obtener el "Ticket
+      de Acceso" (TA)
 
 Especificación Técnica v1.2.2 en:
 http://www.afip.gov.ar/ws/WSAA/Especificacion_Tecnica_WSAA_1.2.2.pdf
@@ -39,15 +39,14 @@ from subprocess import PIPE, Popen
 
 import dateutil.parser
 from lxml import builder, etree
+from zeep import Client, exceptions
 
 from functions import utils, validation
-from zeep import Client
-
 
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.4.1'
+__version__ = '0.5.2'
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
@@ -66,41 +65,10 @@ class WSAA():
         self.certificate = data['certificate']
         self.private_key = data['private_key']
         self.passphrase = data['passphrase']
-        self.cacert = data['cacert']
+        self.wsdl_url = data['wsdl_url']
         self.output = data['output']
         self.web_service = data['web_service']
 
-
-    def tra_exists(self):
-        """
-        Verifica si ya existe un ticket de acceso y que sea válido
-        """
-        # Establezco el nombre del archivo del TA
-        ta_filename = 'ta_{}.xml'.format(self.web_service)
-
-        # Verifico si ya existe un TA previo y es válido
-        try:
-            with open(self.output + '/' + ta_filename, 'r') as ta_xml:
-                # Obtengo el arbol XML y luego el elemento expirationTime
-                tree = etree.parse(ta_xml).getroot()
-                expiration_time = tree.find('header').find('expirationTime')
-
-                # Convierto el string expiration_time en formato datetime
-                expiration_time = dateutil.parser.parse(expiration_time.text)
-
-                # Obtengo la fechahora actual según el servidor de tiempo AFIP
-                ct_time = utils.get_afip_datetime()
-                # Obtengo el timezone de la fechahora de AFIP
-                timezone = utils.afip_timezone(ct_time.timestamp())
-                # Convierto la fechahora de AFIP a formato aware datetime
-                current_time = dateutil.parser.parse(str(ct_time) + timezone)
-
-                # Verifico si la fecha de expiración es mayor que la de AFIP
-                if expiration_time > current_time:
-                    return True
-            return False
-        except FileNotFoundError:
-            return False
 
     def create_tra(self):
         """
@@ -128,7 +96,7 @@ class WSAA():
                 builder.E.header(
                     #builder.E.source(), # campo opcional
                     builder.E.destination(dest),
-                    builder.E.uniqueID(str(random.randint(0, 4294967295))),
+                    builder.E.uniqueId(str(random.randint(0, 4294967295))),
                     builder.E.generationTime(str(generation_time) + timezone),
                     builder.E.expirationTime(str(expiration_time) + timezone),
                 ),
@@ -140,97 +108,37 @@ class WSAA():
             encoding='UTF-8'
         )
 
-        # Devuelvo el TRA generado
+        # Devuelvo el TRA generado en formato bytes
         return tra
 
-    def sign_tra(self, tra):
+
+    def create_cms(self, tra):
         """
-        Firma el TRA con PKCS#7 y devuelve el CMS requerido según
-        especificación técnica de AFIP
+        Genera un CMS que contiene el TRA, la firma electrónica y el
+        certificado X.509 del contribuyente según especificación técnica de
+        AFIP
         """
         try:
-            with Popen([
+            cms = Popen([
                 'openssl', 'smime', '-sign', '-signer', self.certificate,
                 '-inkey', self.private_key, '-outform', 'DER', '-nodetach'
-                ], stdin=PIPE, stdout=PIPE, stderr=PIPE) as output:
-                # Obtengo de la tupla devuelta por communicate sólo stdout
-                pkcs7 = output.communicate(tra)[0]
-
-                # Codifico en base64 y devuelvo el ticket firmado
-                return b64encode(pkcs7)
+                ], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(tra)[0]
+            # Devuelvo stdout del output de communicate
+            return cms
         except FileNotFoundError:
             return False
 
-    def authenticate(self):
-        """
-        Autentica el ticket de acceso si no existe uno o está vencido
-
-        # Leo el ticket de acceso (si fue previamente solicitado)
-        if (not os.path.exists(fn) or os.path.getsize(fn) == 0
-                or os.path.getmtime(fn) + (DEFAULT_TTL) < time.time()):
-
-            # concectar con el web service:
-            if DEBUG:
-                print('Conectando al web service WSAA...')
-            ok = self.connect(cache, wsdl, proxy, wrapper, cacert)
-            if not ok or self.exception:
-                raise RuntimeError('Fallo la conexión: {}'.format(
-                    self.exception))
-
-            # llamar al método remoto para solicitar el TA
-            if DEBUG:
-                print('Llamando WSAA...')
-            ticket = self.login_cms(cms)
-            if not ticket:
-                raise RuntimeError('Ticket de acceso vacío: {}'.format(
-                    WSAA.exception))
-
-            # grabar el ticket de acceso para poder reutilizarlo luego
-            if DEBUG:
-                print('Grabando TA en {}...'.format(fn))
-            try:
-                open(fn, 'w').write(ticket)
-            except IOError:
-                self.exception = 'Imposible grabar ticket de acceso: {}'.format(
-                    fn)
-        else:
-            # leer el ticket de acceso del archivo en cache
-            if DEBUG:
-                print('Leyendo TA de {}...').format(fn)
-            ticket = open(fn, 'r').read()
-
-        # analizar el ticket de acceso y extraer los datos relevantes
-        self.analyze_xml(xml=ticket)
-        self.token = self.get_xml_tag('token')
-        self.sign = self.get_xml_tag('sign')
-
-        return ticket
-"""
-
-'''
-    def call_wsaa(self, cms, url="", proxy=None):
-        """Obtener ticket de autorización (TA) -version retrocompatible-"""
-
-        self.connect('', url, proxy)
-        ta_xml = self.login_cms(cms)
-        if not ta_xml:
-            raise RuntimeError(self.exception)
-
-        return ta_xml
 
     def login_cms(self, cms):
-        """Obtener ticket de autorización (TA)"""
+        """
+        Conecta al WebService SOAP de AFIP y obtiene respuesta en base al CMS
+        que se envía
+        """
+        client = Client(wsdl=self.wsdl_url)
 
-        results = self.client.loginCms(in0=str(cms))
-        ta_xml = results['loginCmsReturn'].encode('utf-8')
-        self.xml = ticket = SimpleXMLElement(ta_xml)
-        self.token = str(ticket.credentials.token)
-        self.sign = str(ticket.credentials.sign)
-        self.expiration_time = str(ticket.header.expirationTime)
+        with client.options(timeout=30):
+            return client.service.loginCms(in0=cms)
 
-        return ta_xml
-
-'''
 
 def cli_parser(argv=None):
     """
@@ -242,7 +150,7 @@ def cli_parser(argv=None):
     # TODO: traducir mensajes internos de argparse al español
 
     # Tupla con los WebServices soportados
-    web_services = ('ws_sr_padron_a4', 'wsfev1',)
+    web_services = ('ws_sr_padron_a4', 'wsfe',)
 
     # Establezco los comandos soportados
     parser = argparse.ArgumentParser()
@@ -376,6 +284,38 @@ def get_config_data(args):
     return data
 
 
+def tra_exists(ticket):
+    """
+    Verifica si ya existe un ticket de acceso y que sea válido
+    """
+    # Verifico si ya existe un TA previo y es válido
+    try:
+        with open(ticket, 'r') as ta_xml:
+            # Obtengo el arbol XML y luego el elemento expirationTime
+            tree = etree.parse(ta_xml).getroot()
+            expiration_time = tree.find('header').find('expirationTime')
+
+            # Convierto el string expiration_time en formato datetime
+            expiration_time = dateutil.parser.parse(expiration_time.text)
+    except FileNotFoundError:
+        return False
+
+    # Obtengo la fechahora actual según el servidor de tiempo AFIP
+    afip_time = utils.get_afip_datetime()
+
+    # Obtengo el timezone de la fechahora de AFIP
+    timezone = utils.afip_timezone(afip_time.timestamp())
+
+    # Convierto la fechahora de AFIP a formato datetime aware
+    current_time = dateutil.parser.parse(str(afip_time) + timezone)
+
+    # Verifico si la fecha de expiración es mayor que la de AFIP
+    if expiration_time > current_time:
+        return True
+
+    return False
+
+
 def main(cli_args, debug):
     """
     Función utilizada para la ejecución del script por línea de comandos
@@ -400,31 +340,75 @@ def main(cli_args, debug):
         logging.info('| URL WSAA:      %s', data['wsaa_url'])
         logging.info('| WebService:    %s', data['web_service'])
         logging.info('| Salida:        %s', data['output'])
+        logging.info('|=================  ---  =================')
 
-    # Creo el objeto de autenticación y autorización
-    wsaa = WSAA(data)
+    # Establezco el nombre del archivo del TRA
+    tra_filename = 'tra_{}.xml'.format(data['web_service'])
+    # Defino el archivo y ruta donde se guardará el ticket
+    ticket = data['output'] + '/' + tra_filename
 
-    # Verifico si existe un ticket y que no esté vencido y lo devuelvo
-    if wsaa.tra_exists():
-        return data['output'] + '/' + 'ta_{}.xml'.format(data['web_service'])
+    # Verifico si ya existe un TRA válido
+    if not tra_exists(ticket):
+        # Creo el objeto de autenticación y autorización
+        wsaa = WSAA(data)
 
-    # Creo el Ticket de Requerimiento de Acceso (TRA)
-    ticket = wsaa.create_tra()
+        # Creo el Ticket de Requerimiento de Acceso (TRA)
+        tra = wsaa.create_tra()
 
-    # Muestro el TRA via stderr si estoy en modo debug
-    if args['debug'] or debug:
-        logging.info('|=================  TRA  =================')
-        logging.info('\n' + str(ticket, 'utf-8'))
+        # Muestro el TRA si estoy en modo debug
+        if args['debug'] or debug:
+            logging.info('|=================  TRA  =================')
+            logging.info('|\n' + str(tra, 'utf-8').strip('\n'))
+            logging.info('|=================  ---  =================')
 
-    # Firmo el ticket y lo almaceno como string utf-8
-    cms = str(wsaa.sign_tra(ticket), 'utf-8')
-    if not cms:
-        raise SystemExit('No se encontró el ejecutable openssl')
+        # Genero un mensaje CMS del tipo SignedData
+        cms = wsaa.create_cms(tra)
+        if not cms:
+            raise SystemExit('No se pudo generar el mensaje CMS: openssl no '
+                             'disponible')
 
-    # Autentico tl
-    #response = wsaa.authenticate()
+        # Codifico el mensaje CMS en formato Base64
+        cms = b64encode(cms)
 
-    #print(response)
+        # Envío el CMS al WSAA de AFIP y analizo la respuesta
+        try:
+            # Obtuve respuesta exitosa de AFIP
+            response = wsaa.login_cms(cms)
+        except exceptions.Fault as error:
+            raise SystemExit(
+                'Código: {} - Mensaje: {}'.format(error.code, error.message))
+
+        # Muestro el mensaje de éxito y no el mensaje propiamente dicho ya que
+        # el mismo no aporta nada al debug
+        if args['debug'] or debug:
+            logging.info('|=================  CMS  =================')
+            logging.info('| Mensaje CMS en Base64 creado exitosamente')
+            logging.info('|=================  ---  =================')
+
+        # Genero el archivo con la respuesta de AFIP
+        with open(ticket, 'w') as filename:
+            filename.write(response)
+
+    # Obtengo el arbol XML y luego los elementos requeridos
+    with open(ticket, 'r') as xml:
+        tree = etree.parse(xml).getroot()
+        token = etree.tostring(
+            tree.find('credentials').find('token'),
+            pretty_print=True,
+            encoding='utf-8')
+        sign = etree.tostring(
+            tree.find('credentials').find('sign'),
+            pretty_print=True,
+            encoding='utf-8')
+        expiration_time = etree.tostring(
+            tree.find('header').find('expirationTime'),
+            pretty_print=True,
+            encoding='utf-8')
+
+    print('Ticket de acceso guardado en: {}'.format(ticket))
+    print('Token: {}'.format(token))
+    print('Sign: {}'.format(sign))
+    print('Expiration Time: {}'.format(expiration_time))
 
 if __name__ == '__main__':
     main(sys.argv, DEBUG)
