@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <xsd:annotation>
+        <xsd:documentation xml:lang="es">
+            Esquema de Ticket de respuesta al pedido de acceso a un
+            WSN por parte de un CEE.
+            Nro revision SVN: $Rev: 695 $
+        </xsd:documentation>
+    </xsd:annotation>
+    <xsd:element name="loginTicketResponse" type="loginTicketResponse" />
+    <xsd:complexType name="loginTicketResponse">
+        <xsd:sequence>
+            <xsd:element name="header" type="headerType" minOccurs="1" maxOccurs="1" />
+            <xsd:element name="credentials" type="credentialsType" minOccurs="1" maxOccurs="1" />
+        </xsd:sequence>
+        <xsd:attribute name="version" type="xsd:decimal" use="optional" default="1.0" />
+    </xsd:complexType>
+    <xsd:complexType name="headerType">
+        <xsd:sequence>
+            <xsd:element name="source" type="xsd:string" minOccurs="1" maxOccurs="1" />
+            <xsd:element name="destination" type="xsd:string" minOccurs="1" maxOccurs="1" />
+            <xsd:element name="uniqueId" type="xsd:unsignedInt" minOccurs="1" maxOccurs="1" />
+            <xsd:element name="generationTime" type="xsd:dateTime" minOccurs="1" maxOccurs="1" />
+            <xsd:element name="expirationTime" type="xsd:dateTime" minOccurs="1" maxOccurs="1" />
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="credentialsType">
+        <xsd:sequence>
+            <xsd:element name="token" type="xsd:string" minOccurs="1" maxOccurs="1" />
+            <xsd:element name="sign" type="xsd:string" minOccurs="1" maxOccurs="1" />
+        </xsd:sequence>
+    </xsd:complexType>
+</xsd:schema>
