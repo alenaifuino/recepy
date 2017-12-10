@@ -69,7 +69,6 @@ class WSAA():
         self.output = data['output']
         self.web_service = data['web_service']
 
-
     def create_tra(self):
         """
         Crea un Ticket de Requerimiento de Acceso (TRA)
@@ -111,7 +110,6 @@ class WSAA():
         # Devuelvo el TRA generado en formato bytes
         return tra
 
-
     def create_cms(self, tra):
         """
         Genera un CMS que contiene el TRA, la firma electrónica y el
@@ -127,7 +125,6 @@ class WSAA():
             return cms
         except FileNotFoundError:
             return False
-
 
     def login_cms(self, cms):
         """
@@ -400,6 +397,7 @@ def main(cli_args, debug):
     print('Token: {}'.format(token[:75] + ' ...'))
     print('Sign: {}'.format(sign[:75] + ' ...'))
     print('Expiration Time: {}'.format(expiration_time))
+
 
 if __name__ == '__main__':
     main(sys.argv, DEBUG)
