@@ -298,17 +298,16 @@ def tra_exists(ticket):
         return False
 
     # Obtengo la fechahora actual según el servidor de tiempo
-    ntp_time = utils.get_datetime()
-
+    time = utils.get_datetime()
     # Si no pude obtener la fechahora de un servidor de tiempo uso la local
-    if not ntp_time:
-        ntp_time = datetime.now()
+    if not time:
+        time = datetime.now()
 
     # Obtengo el timezone de la fechahora
-    timezone = utils.get_timezone(ntp_time.timestamp())
+    timezone = utils.get_timezone(time.timestamp())
 
     # Convierto la fechahora de AFIP a formato datetime aware
-    current_time = dateutil.parser.parse(str(ntp_time) + timezone)
+    current_time = dateutil.parser.parse(str(time) + timezone)
 
     # Verifico si la fecha de expiración es mayor que la de AFIP
     if expiration_time > current_time:
