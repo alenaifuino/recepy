@@ -17,13 +17,14 @@ Módulo con funciones auxiliares para la gestión de:
 
 import json
 from datetime import datetime, timedelta
+from socket import gaierror
 
-import ntplib
+from ntplib import NTPClient, NTPException
 
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.1.1"
+__version__ = "0.2.1"
 
 
 # Archivo de configuración
@@ -44,17 +45,38 @@ def read_config(file, *, section=''):
 
 
 # Fecha
-def afip_ntp_time(ntp_server='time.afip.gob.ar'):
+def ntp_time(ntp_server='time.afip.gob.ar'):
     """
-    Devuelve la fecha y hora obtenida del servidor de tiempo de AFIP
+    Devuelve timestamp de la fecha y hora obtenida del servidor de tiempo
     """
-    client = ntplib.NTPClient()
-    response = client.request(ntp_server)
+    ntp_server_tuple = (
+        'ar.pool.ntp.org',
+        'south-america.pool.ntp.org',)
 
-    return response.tx_time
+    # Genero el objeto client
+    client = NTPClient()
+
+    # Obtengo la fecha del ntp_server suministrado
+    try:
+        response = client.request(ntp_server)
+    except (NTPException, gaierror):
+        response = None
+
+    # Si no obtuve respuesta del ntp_server suministrado por parámetro, recorro
+    # la tupla hasta que obtengo la primer respuesta
+    if not response:
+        for server in ntp_server_tuple:
+            try:
+                response = client.request(server)
+            except (NTPException, gaierror):
+                response = None
+            else:
+                break
+
+    return response.tx_time if response else None
 
 
-def afip_timezone(timestamp):
+def get_timezone(timestamp):
     """
     Devuelve el timezone respecto de UTC en formato (+-)hh:mm para el
     timestamp recibido
@@ -95,8 +117,11 @@ def timestamp_to_datetime(timestamp, *, microsecond=0):
     return datetime.fromtimestamp(timestamp).replace(microsecond=microsecond)
 
 
-def get_afip_datetime():
+def get_datetime():
     """
-    Devuelve la fecha en formato datetime según el servidor de tiempo de AFIP
+    Devuelve la fecha en formato datetime según el servidor de tiempo
     """
-    return timestamp_to_datetime(afip_ntp_time())
+    # Obtengo el timestamp del servidor de tiempo
+    timestamp = ntp_time()
+
+    return timestamp_to_datetime(timestamp) if timestamp else None
