@@ -34,7 +34,7 @@ import logging
 import random
 import sys
 from base64 import b64encode
-from datetime import timedelta
+from datetime import datetime, timedelta
 from subprocess import PIPE, Popen
 
 import dateutil.parser
@@ -46,7 +46,7 @@ from functions import utils, validation
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.5.2'
+__version__ = '0.5.4'
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
@@ -78,7 +78,7 @@ class WSAA():
         dest = 'cn=' + dcn + ',o=afip,c=ar,serialNumber=CUIT 33693450239'
 
         # Obtengo la hora local del servidor de tiempo de AFIP
-        current_time = utils.get_afip_datetime()
+        current_time = utils.get_datetime()
 
         # Establezco los formatos de tiempo para los tags generationTime y
         # expirationTime (+ 30' de generationTime) en formato ISO 8601
@@ -86,7 +86,7 @@ class WSAA():
         expiration_time = (current_time + timedelta(minutes=15)).isoformat()
 
         # Obtengo la zona horaria del servidor de tiempo AFIP
-        timezone = utils.afip_timezone(current_time.timestamp())
+        timezone = utils.get_timezone(current_time.timestamp())
 
         # Creo la estructura del ticket de acceso según especificación técnica
         # de AFIP
@@ -297,14 +297,18 @@ def tra_exists(ticket):
     except FileNotFoundError:
         return False
 
-    # Obtengo la fechahora actual según el servidor de tiempo AFIP
-    afip_time = utils.get_afip_datetime()
+    # Obtengo la fechahora actual según el servidor de tiempo
+    ntp_time = utils.get_datetime()
 
-    # Obtengo el timezone de la fechahora de AFIP
-    timezone = utils.afip_timezone(afip_time.timestamp())
+    # Si no pude obtener la fechahora de un servidor de tiempo uso la local
+    if not ntp_time:
+        ntp_time = datetime.now()
+
+    # Obtengo el timezone de la fechahora
+    timezone = utils.get_timezone(ntp_time.timestamp())
 
     # Convierto la fechahora de AFIP a formato datetime aware
-    current_time = dateutil.parser.parse(str(afip_time) + timezone)
+    current_time = dateutil.parser.parse(str(ntp_time) + timezone)
 
     # Verifico si la fecha de expiración es mayor que la de AFIP
     if expiration_time > current_time:
