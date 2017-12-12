@@ -5,7 +5,7 @@
         "prod_cert": "config/certificates/production.crt",
         "private_key": "config/certificates/private.key",
         "passphrase": "",
-        "cacert": "config/certificates/afip_ca_info.crt",
+        "cacert": "config/certificates/afip_ca.crt",
         "test_wsdl": "https://wsaahomo.afip.gov.ar/ws/services/LoginCms?WSDL",
         "prod_wsdl": "https://wsaa.afip.gov.ar/ws/services/LoginCms?WSDL",
         "output": "data/wsaa"
