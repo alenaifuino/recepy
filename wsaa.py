@@ -46,7 +46,7 @@ from functions import utils, validation
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.5.4'
+__version__ = '0.5.7'
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
@@ -268,9 +268,8 @@ def get_config_data(args):
         raise SystemExit('El archivo de CA de AFIP no tiene permisos de '
                          'lectura')
 
-    # Establezco URLs de conexión dependiendo si estoy en testing o production
+    # Establezco URL de conexión dependiendo si estoy en testing o production
     data['wsdl_url'] = config_data[data['connection'] + '_wsdl']
-    data['wsaa_url'] = config_data[data['connection'] + '_wsaa']
 
     # Nombre del WebService al que se le solicitará ticket acceso
     data['web_service'] = args['web_service']
@@ -294,24 +293,26 @@ def tra_exists(ticket):
 
             # Convierto el string expiration_time en formato datetime
             expiration_time = dateutil.parser.parse(expiration_time.text)
+
+            # Obtengo la fechahora actual según el servidor de tiempo
+            time = utils.get_datetime()
+            # Si no pude obtener la fechahora de un servidor de tiempo uso la
+            # local
+            if not time:
+                time = datetime.now()
+
+            # Obtengo el timezone de la fechahora
+            timezone = utils.get_timezone(time.timestamp())
+
+            # Convierto la fechahora de AFIP a formato datetime aware
+            current_time = dateutil.parser.parse(str(time) + timezone)
+
+            # Verifico si la fecha de expiración es mayor que la de AFIP en
+            # cuyo caso considero que el ticket es todavía válido
+            if expiration_time > current_time:
+                return True
     except FileNotFoundError:
-        return False
-
-    # Obtengo la fechahora actual según el servidor de tiempo
-    time = utils.get_datetime()
-    # Si no pude obtener la fechahora de un servidor de tiempo uso la local
-    if not time:
-        time = datetime.now()
-
-    # Obtengo el timezone de la fechahora
-    timezone = utils.get_timezone(time.timestamp())
-
-    # Convierto la fechahora de AFIP a formato datetime aware
-    current_time = dateutil.parser.parse(str(time) + timezone)
-
-    # Verifico si la fecha de expiración es mayor que la de AFIP
-    if expiration_time > current_time:
-        return True
+        pass # va a devolver False por default la función
 
     return False
 
@@ -337,7 +338,6 @@ def main(cli_args, debug):
                      '******' if data['passphrase'] else None)
         logging.info('| CA AFIP:       %s', data['cacert'])
         logging.info('| URL WSDL:      %s', data['wsdl_url'])
-        logging.info('| URL WSAA:      %s', data['wsaa_url'])
         logging.info('| WebService:    %s', data['web_service'])
         logging.info('| Salida:        %s', data['output'])
         logging.info('|=================  ---  =================')
