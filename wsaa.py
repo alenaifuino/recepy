@@ -34,19 +34,23 @@ import logging
 import random
 import sys
 from base64 import b64encode
-from datetime import datetime, timedelta
+from datetime import timedelta
 from subprocess import PIPE, Popen
 
 import dateutil.parser
 from lxml import builder, etree
+#from requests import Session
 from zeep import Client, exceptions
 
 from functions import utils, validation
 
+#from zeep.transports import Transport
+
+
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.5.7'
+__version__ = '0.5.8'
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
@@ -65,6 +69,7 @@ class WSAA():
         self.certificate = data['certificate']
         self.private_key = data['private_key']
         self.passphrase = data['passphrase']
+        #self.cacert = data['cacert']
         self.wsdl_url = data['wsdl_url']
         self.output = data['output']
         self.web_service = data['web_service']
@@ -77,7 +82,7 @@ class WSAA():
         dcn = 'wsaa' if self.connection == 'prod' else 'wsaahomo'
         dest = 'cn=' + dcn + ',o=afip,c=ar,serialNumber=CUIT 33693450239'
 
-        # Obtengo la hora local del servidor de tiempo de AFIP
+        # Obtengo la fechahora actual
         current_time = utils.get_datetime()
 
         # Establezco los formatos de tiempo para los tags generationTime y
@@ -131,6 +136,15 @@ class WSAA():
         Conecta al WebService SOAP de AFIP y obtiene respuesta en base al CMS
         que se envía
         """
+        # Creo una instancia de Session para validar la conexión SSL, de esta
+        # manera la información se mantiene de manera persistente
+        #session = Session()
+        # Incluyo el certificado en formato PEM
+        #session.verify = self.cacert
+        #transport = Transport(session)
+
+        #client = Client(wsdl=self.wsdl_url, transport=transport)
+
         client = Client(wsdl=self.wsdl_url)
 
         with client.options(timeout=30):
@@ -294,12 +308,8 @@ def tra_exists(ticket):
             # Convierto el string expiration_time en formato datetime
             expiration_time = dateutil.parser.parse(expiration_time.text)
 
-            # Obtengo la fechahora actual según el servidor de tiempo
+            # Obtengo la fechahora actual
             time = utils.get_datetime()
-            # Si no pude obtener la fechahora de un servidor de tiempo uso la
-            # local
-            if not time:
-                time = datetime.now()
 
             # Obtengo el timezone de la fechahora
             timezone = utils.get_timezone(time.timestamp())
@@ -312,7 +322,7 @@ def tra_exists(ticket):
             if expiration_time > current_time:
                 return True
     except FileNotFoundError:
-        pass # va a devolver False por default la función
+        pass # la función devuelve False por default
 
     return False
 
