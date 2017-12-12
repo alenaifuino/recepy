@@ -396,9 +396,9 @@ def main(cli_args, debug):
         sign = tree.find('credentials').find('sign').text
         expiration_time = tree.find('header').find('expirationTime').text
 
-    print('Ticket de acceso guardado en: {}'.format(ticket))
-    print('Token: {}'.format(token[:75] + ' ...'))
-    print('Sign: {}'.format(sign[:75] + ' ...'))
+    print('Ticket en: {:>28}'.format(ticket))
+    print('Token: {:>38}'.format(token[:25] + '...'))
+    print('Sign: {:>39}'.format(sign[:25] + '...'))
     print('Expiration Time: {}'.format(expiration_time))
 
 
