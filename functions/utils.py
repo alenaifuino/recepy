@@ -105,7 +105,7 @@ def get_timezone(timestamp):
     seconds = str(timedelta(seconds=seconds))[:-3]
 
     # Si el largo es 4 entonces debo agregar el 0 por delante para obtener el
-    # timezone con format hh:mm
+    # timezone con formato hh:mm
     if len(seconds) == 4:
         timezone = timezone + '0' + seconds
     else:
@@ -125,7 +125,7 @@ def get_datetime(source='afip.time.gob.ar'):
     """
     Devuelve la fecha en formato datetime según el servidor de tiempo
     """
-    # Obtengo el timestamp del servidor de tiempo
+    # Obtengo el timestamp del servidor de tiempo de AFIP por default
     timestamp = ntp_time(source)
 
     return timestamp_to_datetime(timestamp) if timestamp else None
