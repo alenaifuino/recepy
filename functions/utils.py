@@ -123,9 +123,14 @@ def timestamp_to_datetime(timestamp, *, microsecond=0):
 
 def get_datetime(source='afip.time.gob.ar'):
     """
-    Devuelve la fecha en formato datetime según el servidor de tiempo
+    Devuelve la fecha en formato datetime según el servidor de tiempo (AFIP
+    por default) o hace fallback a localtime si no se obtuvo un timestamp del
+    servidor de tiempo
     """
     # Obtengo el timestamp del servidor de tiempo de AFIP por default
     timestamp = ntp_time(source)
+    # Hago fallback a localtime
+    if not timestamp:
+        timestamp = datetime.now().timestamp()
 
     return timestamp_to_datetime(timestamp) if timestamp else None
