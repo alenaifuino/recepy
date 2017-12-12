@@ -50,7 +50,7 @@ from functions import utils, validation
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.6.4'
+__version__ = '0.6.5'
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
@@ -114,16 +114,13 @@ class WSAA():
         certificado X.509 del contribuyente según especificación técnica de
         AFIP
         """
-        try:
-            cms = Popen([
-                'openssl', 'smime', '-sign', '-signer',
-                self.data['certificate'], '-inkey', self.data['private_key'],
-                '-outform', 'DER', '-nodetach'
-                ], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(tra)[0]
-            # Devuelvo stdout del output de communicate
-            return cms
-        except FileNotFoundError:
-            return False
+        cms = Popen([
+            'openssl', 'smime', '-sign', '-signer', self.data['certificate'],
+            '-inkey', self.data['private_key'], '-outform', 'DER', '-nodetach'
+            ], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(tra)[0]
+
+        # Devuelvo stdout del output de communicate
+        return cms
 
     def login_cms(self, cms):
         """
@@ -144,7 +141,6 @@ class WSAA():
         client = Client(wsdl=self.data['wsdl_url'], transport=transport)
 
         return client.service.loginCms(in0=cms)
-
 
 
 def cli_parser(argv=None):
@@ -368,8 +364,9 @@ def main(cli_args, debug):
             logging.info('|=================  ---  =================')
 
         # Genero un mensaje CMS del tipo SignedData
-        cms = wsaa.create_cms(tra)
-        if not cms:
+        try:
+            cms = wsaa.create_cms(tra)
+        except FileNotFoundError:
             raise SystemExit('No se pudo generar el mensaje CMS: openssl no '
                              'disponible')
 
