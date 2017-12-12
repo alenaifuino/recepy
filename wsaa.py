@@ -39,8 +39,10 @@ from subprocess import PIPE, Popen
 
 import dateutil.parser
 from lxml import builder, etree
-from requests import Session, exceptions as requests_exceptions
-from zeep import Client, exceptions as zeep_exceptions
+from requests import exceptions as requests_exceptions
+from requests import Session
+from zeep import exceptions as zeep_exceptions
+from zeep import Client
 from zeep.transports import Transport
 
 from functions import utils, validation
@@ -48,7 +50,7 @@ from functions import utils, validation
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.6.3'
+__version__ = '0.6.4'
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
