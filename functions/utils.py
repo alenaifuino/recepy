@@ -24,7 +24,7 @@ from ntplib import NTPClient, NTPException
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.2.1"
+__version__ = "0.2.4"
 
 
 # Archivo de configuración
@@ -53,27 +53,31 @@ def ntp_time(ntp_server):
         'ar.pool.ntp.org',
         'south-america.pool.ntp.org',)
 
-    # Genero el objeto client
+    # Genero el objeto NTPclient
     client = NTPClient()
 
-    # Obtengo la fecha del ntp_server suministrado
-    try:
-        response = client.request(ntp_server)
-    except (NTPException, gaierror):
-        response = None
+    # Obtengo la fecha del ntp_server si este fue suministrado
+    if ntp_server:
+        try:
+            timestamp = client.request(ntp_server).tx_time
+        except (NTPException, gaierror):
+            timestamp = None
+    else:
+        timestamp = None
 
-    # Si no obtuve respuesta del ntp_server suministrado por parámetro, recorro
-    # la tupla hasta que obtengo la primer respuesta
-    if not response:
+    # Si no obtuve respuesta del ntp_server o hubo una excepción, recorro la
+    # tupla hasta que obtengo la primer respuesta
+    if not timestamp:
         for server in ntp_server_tuple:
             try:
-                response = client.request(server)
+                timestamp = client.request(server).tx_time
             except (NTPException, gaierror):
-                response = None
+                timestamp = None
             else:
+                # Se ejecuta si no hubo excepciones
                 break
 
-    return response.tx_time if response else None
+    return timestamp
 
 
 def get_timezone(timestamp):
