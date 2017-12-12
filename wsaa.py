@@ -48,7 +48,7 @@ from functions import utils, validation
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.6.2'
+__version__ = '0.6.3'
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
@@ -63,21 +63,14 @@ class WSAA():
     y Autorización de AFIP
     """
     def __init__(self, data):
-        self.connection = data['connection']
-        self.certificate = data['certificate']
-        self.private_key = data['private_key']
-        self.passphrase = data['passphrase']
-        self.cacert = data['cacert']
-        self.wsdl_url = data['wsdl_url']
-        self.output = data['output']
-        self.web_service = data['web_service']
+        self.data = data
 
     def create_tra(self):
         """
         Crea un Ticket de Requerimiento de Acceso (TRA)
         """
         # Establezco el tipo de conexión para usar en el tag destination
-        dcn = 'wsaa' if self.connection == 'prod' else 'wsaahomo'
+        dcn = 'wsaa' if self.data['connection'] == 'prod' else 'wsaahomo'
         dest = 'cn=' + dcn + ',o=afip,c=ar,serialNumber=CUIT 33693450239'
 
         # Obtengo la fechahora actual
@@ -102,7 +95,7 @@ class WSAA():
                     builder.E.generationTime(str(generation_time) + timezone),
                     builder.E.expirationTime(str(expiration_time) + timezone),
                 ),
-                builder.E.service(self.web_service),
+                builder.E.service(self.data['web_service']),
                 version='1.0'
             ),
             pretty_print=True,
@@ -121,8 +114,9 @@ class WSAA():
         """
         try:
             cms = Popen([
-                'openssl', 'smime', '-sign', '-signer', self.certificate,
-                '-inkey', self.private_key, '-outform', 'DER', '-nodetach'
+                'openssl', 'smime', '-sign', '-signer',
+                self.data['certificate'], '-inkey', self.data['private_key'],
+                '-outform', 'DER', '-nodetach'
                 ], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(tra)[0]
             # Devuelvo stdout del output de communicate
             return cms
@@ -138,14 +132,14 @@ class WSAA():
         # información se mantiene de manera persistente
         session = Session()
         # Incluyo el certificado en formato PEM
-        session.verify = self.cacert
+        session.verify = self.data['cacert']
 
         # Instancio Transport con la información de sesión y el timeout a
         # utilizar en la conexión
         transport = Transport(session=session, timeout=30)
 
         # Instancio Client con los datos del wsdl de WSAA y de transporte
-        client = Client(wsdl=self.wsdl_url, transport=transport)
+        client = Client(wsdl=self.data['wsdl_url'], transport=transport)
 
         return client.service.loginCms(in0=cms)
 
