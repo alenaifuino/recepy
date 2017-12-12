@@ -39,18 +39,16 @@ from subprocess import PIPE, Popen
 
 import dateutil.parser
 from lxml import builder, etree
-#from requests import Session
+from requests import Session
 from zeep import Client, exceptions
+from zeep.transports import Transport
 
 from functions import utils, validation
-
-#from zeep.transports import Transport
-
 
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.5.8'
+__version__ = '0.6.1'
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
@@ -69,7 +67,7 @@ class WSAA():
         self.certificate = data['certificate']
         self.private_key = data['private_key']
         self.passphrase = data['passphrase']
-        #self.cacert = data['cacert']
+        self.cacert = data['cacert']
         self.wsdl_url = data['wsdl_url']
         self.output = data['output']
         self.web_service = data['web_service']
@@ -136,19 +134,20 @@ class WSAA():
         Conecta al WebService SOAP de AFIP y obtiene respuesta en base al CMS
         que se envía
         """
-        # Creo una instancia de Session para validar la conexión SSL, de esta
-        # manera la información se mantiene de manera persistente
-        #session = Session()
+        # Instancio Session para validar la conexión SSL, de esta manera la
+        # información se mantiene de manera persistente
+        session = Session()
         # Incluyo el certificado en formato PEM
-        #session.verify = self.cacert
-        #transport = Transport(session)
+        session.verify = self.cacert
 
-        #client = Client(wsdl=self.wsdl_url, transport=transport)
+        # Instancio Transport con la información de sesión y el timeout a
+        # utilizar en la conexión
+        transport = Transport(session=session, timeout=30)
 
-        client = Client(wsdl=self.wsdl_url)
+        # Instancio Client con los datos del wsdl de WSAA y de transporte
+        client = Client(wsdl=self.wsdl_url, transport=transport)
 
-        with client.options(timeout=30):
-            return client.service.loginCms(in0=cms)
+        return client.service.loginCms(in0=cms)
 
 
 def cli_parser(argv=None):
