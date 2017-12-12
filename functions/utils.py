@@ -28,7 +28,7 @@ __version__ = "0.2.1"
 
 
 # Archivo de configuración
-def read_config(file, *, section=''):
+def read_config(file, *, section=None):
     """
     Devuelve el archivo de configuración. Si recibe 'section', sólo se
     devuelve esa sección
@@ -39,7 +39,7 @@ def read_config(file, *, section=''):
     if not section:
         return config
     elif section not in config:
-        return False
+        return None
 
     return config[section]
 
