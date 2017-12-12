@@ -39,8 +39,8 @@ from subprocess import PIPE, Popen
 
 import dateutil.parser
 from lxml import builder, etree
-from requests import Session
-from zeep import Client, exceptions
+from requests import Session, exceptions as requests_exceptions
+from zeep import Client, exceptions as zeep_exceptions
 from zeep.transports import Transport
 
 from functions import utils, validation
@@ -48,7 +48,7 @@ from functions import utils, validation
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.6.1'
+__version__ = '0.6.2'
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
@@ -148,6 +148,7 @@ class WSAA():
         client = Client(wsdl=self.wsdl_url, transport=transport)
 
         return client.service.loginCms(in0=cms)
+
 
 
 def cli_parser(argv=None):
@@ -383,9 +384,13 @@ def main(cli_args, debug):
         try:
             # Obtuve respuesta exitosa de AFIP
             response = wsaa.login_cms(cms)
-        except exceptions.Fault as error:
+        except requests_exceptions.SSLError:
+            raise SystemExit('El certificado CA suministrado para validación '
+                             'SSL del WSAA es incorrecto')
+        except zeep_exceptions.Fault as error:
             raise SystemExit(
                 'Código: {} - Mensaje: {}'.format(error.code, error.message))
+
 
         # Muestro el mensaje de éxito y no el mensaje propiamente dicho ya que
         # el mismo no aporta nada al debug
