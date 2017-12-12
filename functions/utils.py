@@ -45,7 +45,7 @@ def read_config(file, *, section=''):
 
 
 # Fecha
-def ntp_time(ntp_server='time.afip.gob.ar'):
+def ntp_time(ntp_server):
     """
     Devuelve timestamp de la fecha y hora obtenida del servidor de tiempo
     """
@@ -117,11 +117,11 @@ def timestamp_to_datetime(timestamp, *, microsecond=0):
     return datetime.fromtimestamp(timestamp).replace(microsecond=microsecond)
 
 
-def get_datetime():
+def get_datetime(source='afip.time.gob.ar'):
     """
     Devuelve la fecha en formato datetime según el servidor de tiempo
     """
     # Obtengo el timestamp del servidor de tiempo
-    timestamp = ntp_time()
+    timestamp = ntp_time(source)
 
     return timestamp_to_datetime(timestamp) if timestamp else None
