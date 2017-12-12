@@ -6,9 +6,7 @@
         "private_key": "config/certificates/private.key",
         "passphrase": "",
         "cacert": "config/certificates/afip_ca_info.crt",
-        "test_wsaa": "https://wsaahomo.afip.gov.ar/ws/services/LoginCms",
         "test_wsdl": "https://wsaahomo.afip.gov.ar/ws/services/LoginCms?WSDL",
-        "prod_wsaa": "https://wsaa.afip.gov.ar/ws/services/LoginCms",
         "prod_wsdl": "https://wsaa.afip.gov.ar/ws/services/LoginCms?WSDL",
         "output": "data/wsaa"
     },
