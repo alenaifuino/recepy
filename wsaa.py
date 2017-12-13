@@ -50,7 +50,7 @@ from functions import utils, validation
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.7.2'
+__version__ = '0.7.3'
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
@@ -334,7 +334,7 @@ def print_output(ticket, elements):
     """
     Imprime la salida final del script
     """
-    print('Ticket en: {:>28}'.format(ticket))
+    print('Ticket en: {:>27}'.format(ticket))
     print('Token: {:>38}'.format(elements['token'][:25] + '...'))
     print('Sign: {:>39}'.format(elements['sign'][:25] + '...'))
     print('Expiration Time: {}'.format(elements['expiration_time']))
@@ -365,7 +365,7 @@ def main(cli_args, debug):
         logging.info('|=================  ---  =================')
 
     # Defino el archivo y ruta donde se guardará el ticket
-    ticket = 'data/wsaa/' + 'ta_{}.xml'.format(data['web_service'])
+    ticket = 'data/wsaa/' + 'tra_{}.xml'.format(data['web_service'])
 
     # Verifico si ya existe un TRA válido
     try:
