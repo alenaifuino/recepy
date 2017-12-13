@@ -341,10 +341,8 @@ def main(cli_args, debug):
         logging.info('| Salida:        %s', data['output'])
         logging.info('|=================  ---  =================')
 
-    # Establezco el nombre del archivo del TRA
-    tra_filename = 'tra_{}.xml'.format(data['web_service'])
     # Defino el archivo y ruta donde se guardará el ticket
-    ticket = data['output'] + '/' + tra_filename
+    ticket = data['output'] + '/' + 'tra_{}.xml'.format(data['web_service'])
 
     # Verifico si ya existe un TRA válido
     try:
@@ -397,20 +395,21 @@ def main(cli_args, debug):
             logging.info('|=================  ---  =================')
 
         # Genero el archivo con la respuesta de AFIP
-        with open(ticket, 'w') as filename:
-            filename.write(response)
+        with open(ticket, 'w') as file:
+            file.write(response)
 
-    # Obtengo el arbol XML y luego los elementos requeridos
-    with open(ticket, 'r') as xml:
-        tree = etree.parse(xml).getroot()
-        token = tree.find('credentials').find('token').text
-        sign = tree.find('credentials').find('sign').text
-        expiration_time = tree.find('header').find('expirationTime').text
+    # Obtengo el arbol XML y los elementos requeridos
+    with open(ticket, 'r') as file:
+        tree = etree.parse(file).getroot()
+        data['token'] = tree.find('credentials').find('token').text
+        data['sign'] = tree.find('credentials').find('sign').text
+        data['expiration_time'] = (
+            tree.find('header').find('expirationTime').text)
 
     print('Ticket en: {:>28}'.format(ticket))
-    print('Token: {:>38}'.format(token[:25] + '...'))
-    print('Sign: {:>39}'.format(sign[:25] + '...'))
-    print('Expiration Time: {}'.format(expiration_time))
+    print('Token: {:>38}'.format(data['token'][:25] + '...'))
+    print('Sign: {:>39}'.format(data['sign'][:25] + '...'))
+    print('Expiration Time: {}'.format(data['expiration_time']))
 
 
 if __name__ == '__main__':
