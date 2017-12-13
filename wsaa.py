@@ -50,7 +50,7 @@ from functions import utils, validation
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.6.6'
+__version__ = '0.6.8'
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
@@ -286,35 +286,32 @@ def get_config_data(args):
     return data
 
 
-def tra_exists(ticket):
+def tra_exist(ticket):
     """
-    Verifica si ya existe un ticket de acceso y que sea válido
+    Verifica si ya existe un ticket de acceso (TRA) y que esté vigente
     """
     # Verifico si ya existe un TA previo y es válido
-    try:
-        with open(ticket, 'r') as ta_xml:
-            # Obtengo el arbol XML y luego el elemento expirationTime
-            tree = etree.parse(ta_xml).getroot()
-            expiration_time = tree.find('header').find('expirationTime')
+    with open(ticket, 'r') as ta_xml:
+        # Obtengo el arbol XML y luego el elemento expirationTime
+        tree = etree.parse(ta_xml).getroot()
+        expiration_time = tree.find('header').find('expirationTime')
 
-            # Convierto el string expiration_time en formato datetime
-            expiration_time = dateutil.parser.parse(expiration_time.text)
+    # Convierto el string expiration_time en formato datetime
+    expiration_time = dateutil.parser.parse(expiration_time.text)
 
-            # Obtengo la fechahora actual
-            time = utils.get_datetime()
+    # Obtengo la fechahora actual
+    time = utils.get_datetime()
 
-            # Obtengo el timezone de la fechahora
-            timezone = utils.get_timezone(time.timestamp())
+    # Obtengo el timezone de la fechahora
+    timezone = utils.get_timezone(time.timestamp())
 
-            # Convierto la fechahora de AFIP a formato datetime aware
-            current_time = dateutil.parser.parse(str(time) + timezone)
+    # Convierto la fechahora de AFIP a formato datetime aware
+    current_time = dateutil.parser.parse(str(time) + timezone)
 
-            # Verifico si la fecha de expiración es mayor que la de AFIP en
-            # cuyo caso considero que el ticket es todavía válido
-            if expiration_time > current_time:
-                return True
-    except FileNotFoundError:
-        pass # la función devuelve False por default
+    # Verifico si la fecha de expiración es mayor que la de AFIP en cuyo caso
+    # considero que el ticket es todavía válido
+    if expiration_time > current_time:
+        return True
 
     return False
 
@@ -350,7 +347,13 @@ def main(cli_args, debug):
     ticket = data['output'] + '/' + tra_filename
 
     # Verifico si ya existe un TRA válido
-    if not tra_exists(ticket):
+    try:
+        valid_tra = tra_exist(ticket)
+    except FileNotFoundError:
+        valid_tra = False
+
+    # El TRA no existe o no está vigente
+    if not valid_tra:
         # Creo el objeto de autenticación y autorización
         wsaa = WSAA(data)
 
