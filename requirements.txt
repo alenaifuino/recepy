@@ -1,4 +1,4 @@
 configparser==3.5.0
 zeep==2.4.0
 ntplib==0.3.3
-python-dateutils==2.6.1
+python-dateutil==2.6.1
