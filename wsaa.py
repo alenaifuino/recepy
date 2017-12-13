@@ -50,7 +50,7 @@ from functions import utils, validation
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.6.5'
+__version__ = '0.6.6'
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
@@ -373,17 +373,18 @@ def main(cli_args, debug):
         # Codifico el mensaje CMS en formato Base64
         cms = b64encode(cms)
 
-        # Envío el CMS al WSAA de AFIP y analizo la respuesta
+        # Envío el CMS al WSAA de AFIP
         try:
-            # Obtuve respuesta exitosa de AFIP
             response = wsaa.login_cms(cms)
         except requests_exceptions.SSLError:
             raise SystemExit('El certificado CA suministrado para validación '
                              'SSL del WSAA es incorrecto')
+        except requests_exceptions.ConnectionError:
+            raise SystemExit('No se pudo establecer conexión con el '
+                             'webservice WSAA de AFIP')
         except zeep_exceptions.Fault as error:
             raise SystemExit(
                 'Código: {} - Mensaje: {}'.format(error.code, error.message))
-
 
         # Muestro el mensaje de éxito y no el mensaje propiamente dicho ya que
         # el mismo no aporta nada al debug
