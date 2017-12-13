@@ -50,7 +50,7 @@ from functions import utils, validation
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.6.8'
+__version__ = '0.7.1'
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
@@ -316,6 +316,33 @@ def tra_exist(ticket):
     return False
 
 
+def parse_afip_response(ticket):
+    """
+    Obtiene los elementos del XML de respuesta de AFIP
+    """
+    with open(ticket, 'r') as file:
+        tree = etree.parse(file).getroot()
+
+    # Inicializo el diccionario de respuesta
+    xml_e = {}
+
+    xml_e['token'] = tree.find('credentials').find('token').text
+    xml_e['sign'] = tree.find('credentials').find('sign').text
+    xml_e['expiration_time'] = tree.find('header').find('expirationTime').text
+
+    return xml_e
+
+
+def print_output(ticket, elements):
+    """
+    Imprime la salida final del script
+    """
+    print('Ticket en: {:>28}'.format(ticket))
+    print('Token: {:>38}'.format(elements['token'][:25] + '...'))
+    print('Sign: {:>39}'.format(elements['sign'][:25] + '...'))
+    print('Expiration Time: {}'.format(elements['expiration_time']))
+
+
 def main(cli_args, debug):
     """
     Función utilizada para la ejecución del script por línea de comandos
@@ -399,17 +426,10 @@ def main(cli_args, debug):
             file.write(response)
 
     # Obtengo el arbol XML y los elementos requeridos
-    with open(ticket, 'r') as file:
-        tree = etree.parse(file).getroot()
-        data['token'] = tree.find('credentials').find('token').text
-        data['sign'] = tree.find('credentials').find('sign').text
-        data['expiration_time'] = (
-            tree.find('header').find('expirationTime').text)
+    elements = parse_afip_response(ticket)
 
-    print('Ticket en: {:>28}'.format(ticket))
-    print('Token: {:>38}'.format(data['token'][:25] + '...'))
-    print('Sign: {:>39}'.format(data['sign'][:25] + '...'))
-    print('Expiration Time: {}'.format(data['expiration_time']))
+    # Imprimo la salida luego de parsear el archivo XML
+    print_output(ticket, elements)
 
 
 if __name__ == '__main__':
