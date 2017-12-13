@@ -50,7 +50,7 @@ from functions import utils, validation
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.7.1'
+__version__ = '0.7.2'
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
@@ -280,9 +280,6 @@ def get_config_data(args):
     # Nombre del WebService al que se le solicitará ticket acceso
     data['web_service'] = args['web_service']
 
-    # Directorio donde se guardará la salida JSON
-    data['output'] = config_data['output']
-
     return data
 
 
@@ -365,11 +362,10 @@ def main(cli_args, debug):
         logging.info('| CA AFIP:       %s', data['cacert'])
         logging.info('| URL WSDL:      %s', data['wsdl_url'])
         logging.info('| WebService:    %s', data['web_service'])
-        logging.info('| Salida:        %s', data['output'])
         logging.info('|=================  ---  =================')
 
     # Defino el archivo y ruta donde se guardará el ticket
-    ticket = data['output'] + '/' + 'tra_{}.xml'.format(data['web_service'])
+    ticket = 'data/wsaa/' + 'ta_{}.xml'.format(data['web_service'])
 
     # Verifico si ya existe un TRA válido
     try:
