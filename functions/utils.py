@@ -21,10 +21,15 @@ from socket import gaierror
 
 from ntplib import NTPClient, NTPException
 
+from . import validation
+
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.2.4"
+__version__ = "0.3.1"
+
+# Define el archivo de configuración
+CONFIG_FILE = 'config/config.json'
 
 
 # Archivo de configuración
@@ -42,6 +47,87 @@ def read_config(file, *, section=None):
         return None
 
     return config[section]
+
+
+def get_config_data(args):
+    """
+    Obtengo los datos de configuración y devuelvo un diccionario con los mismos
+    """
+    # Obtengo los datos del archivo de configuración
+    if not validation.check_file_exists(CONFIG_FILE):
+        raise SystemExit('No se encontró el archivo de configuración')
+    elif not validation.check_file_permission(CONFIG_FILE, permission='r'):
+        raise SystemExit('El archivo de configuración no tiene permiso de '
+                         'lectura')
+    else:
+        config_data = read_config(CONFIG_FILE, section='wsaa')
+        if not config_data:
+            raise SystemExit('Sección inexistente en archivo de configuración')
+
+    # Diccionario para almacenar los datos de configuración
+    data = {}
+
+    # Defino el tipo de conexión: testing o production
+    data['connection'] = 'test' if not args['production'] else 'prod'
+
+    # Obtengo el CUIT de la línea de comando o el archivo de configuración en
+    # su defecto eliminado los guiones
+    data['cuit'] = (
+        args['cuit']
+        if args['cuit']
+        else config_data['cuit']).replace('-', '')
+
+    if not data['cuit']:
+        raise SystemExit('Debe definir el CUIT que solicita el TA')
+    elif not validation.check_cuit(data['cuit']):
+        raise SystemExit('El CUIT suministrado es inválido')
+
+    # Certificado
+    data['certificate'] = (
+        args['certificate']
+        if args['certificate']
+        else config_data[data['connection'] + '_cert'])
+    if not validation.check_file_exists(data['certificate']):
+        raise SystemExit('No se encontró el archivo de certificado')
+    elif not validation.check_file_permission(data['certificate'],
+                                              permission='r'):
+        raise SystemExit('El archivo de certificado no tiene permisos de '
+                         'lectura')
+
+    # Clave Privada
+    data['private_key'] = (
+        args['private_key']
+        if args['private_key']
+        else config_data['private_key'])
+    if not validation.check_file_exists(data['private_key']):
+        raise SystemExit('No se encontró el archivo de clave privada')
+    elif not validation.check_file_permission(data['private_key'],
+                                              permission='r'):
+        raise SystemExit('El archivo de clave privada no tiene permisos de '
+                         'lectura')
+
+    # Frase Secreta
+    data['passphrase'] = (
+        config_data['passphrase']
+        if config_data['passphrase']
+        else None)
+
+    # Certificado de Autoridad Certificante (CA AFIP)
+    data['cacert'] = config_data['cacert']
+    if not validation.check_file_exists(data['cacert']):
+        raise SystemExit('No se encontró el archivo de CA de AFIP')
+    elif not validation.check_file_permission(data['cacert'],
+                                              permission='r'):
+        raise SystemExit('El archivo de CA de AFIP no tiene permisos de '
+                         'lectura')
+
+    # Establezco URL de conexión dependiendo si estoy en testing o production
+    data['wsdl_url'] = config_data[data['connection'] + '_wsdl']
+
+    # Nombre del WebService al que se le solicitará ticket acceso
+    data['web_service'] = args['web_service']
+
+    return data
 
 
 # Fecha

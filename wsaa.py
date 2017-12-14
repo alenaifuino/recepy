@@ -46,15 +46,12 @@ from zeep import exceptions as zeep_exceptions
 from zeep import Client
 from zeep.transports import Transport
 
-from functions import utils, validation
+from functions import utils
 
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.8.7'
-
-# Define el archivo de configuración
-CONFIG_FILE = 'config/config.json'
+__version__ = '0.8.8'
 
 # Activa o desactiva el modo DEBUG
 DEBUG = False
@@ -201,89 +198,6 @@ def cli_parser(argv=None):
         return vars(args)
 
 
-def get_config_data(args):
-    """
-    Obtengo los datos de configuración y devuelvo un diccionario con los mismos
-    """
-    # TODO: crear una clase y transferir el contenido a functions/utils
-
-    # Obtengo los datos del archivo de configuración
-    if not validation.check_file_exists(CONFIG_FILE):
-        raise SystemExit('No se encontró el archivo de configuración')
-    elif not validation.check_file_permission(CONFIG_FILE, permission='r'):
-        raise SystemExit('El archivo de configuración no tiene permiso de '
-                         'lectura')
-    else:
-        config_data = utils.read_config(CONFIG_FILE, section='wsaa')
-        if not config_data:
-            raise SystemExit('Sección inexistente en archivo de configuración')
-
-    # Diccionario para almacenar los datos de configuración
-    data = {}
-
-    # Defino el tipo de conexión: testing o production
-    data['connection'] = 'test' if not args['production'] else 'prod'
-
-    # Obtengo el CUIT de la línea de comando o el archivo de configuración en
-    # su defecto eliminado los guiones
-    data['cuit'] = (
-        args['cuit']
-        if args['cuit']
-        else config_data['cuit']).replace('-', '')
-
-    if not data['cuit']:
-        raise SystemExit('Debe definir el CUIT que solicita el TA')
-    elif not validation.check_cuit(data['cuit']):
-        raise SystemExit('El CUIT suministrado es inválido')
-
-    # Certificado
-    data['certificate'] = (
-        args['certificate']
-        if args['certificate']
-        else config_data[data['connection'] + '_cert'])
-    if not validation.check_file_exists(data['certificate']):
-        raise SystemExit('No se encontró el archivo de certificado')
-    elif not validation.check_file_permission(data['certificate'],
-                                              permission='r'):
-        raise SystemExit('El archivo de certificado no tiene permisos de '
-                         'lectura')
-
-    # Clave Privada
-    data['private_key'] = (
-        args['private_key']
-        if args['private_key']
-        else config_data['private_key'])
-    if not validation.check_file_exists(data['private_key']):
-        raise SystemExit('No se encontró el archivo de clave privada')
-    elif not validation.check_file_permission(data['private_key'],
-                                              permission='r'):
-        raise SystemExit('El archivo de clave privada no tiene permisos de '
-                         'lectura')
-
-    # Frase Secreta
-    data['passphrase'] = (
-        config_data['passphrase']
-        if config_data['passphrase']
-        else None)
-
-    # Certificado de Autoridad Certificante (CA AFIP)
-    data['cacert'] = config_data['cacert']
-    if not validation.check_file_exists(data['cacert']):
-        raise SystemExit('No se encontró el archivo de CA de AFIP')
-    elif not validation.check_file_permission(data['cacert'],
-                                              permission='r'):
-        raise SystemExit('El archivo de CA de AFIP no tiene permisos de '
-                         'lectura')
-
-    # Establezco URL de conexión dependiendo si estoy en testing o production
-    data['wsdl_url'] = config_data[data['connection'] + '_wsdl']
-
-    # Nombre del WebService al que se le solicitará ticket acceso
-    data['web_service'] = args['web_service']
-
-    return data
-
-
 def tra_exist(ticket):
     """
     Verifica si ya existe un ticket de acceso (TRA) y que esté vigente
@@ -363,7 +277,7 @@ def main(cli_args, debug):
     args = cli_parser(cli_args)
 
     # Obtengo los datos de configuración
-    data = get_config_data(args)
+    data = utils.get_config_data(args)
 
     # Muestro las opciones de configuración via stderr si estoy en modo debug
     if args['debug'] or debug:
@@ -442,11 +356,8 @@ def main(cli_args, debug):
         with open(ticket, 'w') as file:
             file.write(response)
 
-    # Obtengo el arbol XML y los elementos requeridos
-    elements = parse_afip_response(ticket)
-
     # Imprimo la salida luego de parsear el archivo XML
-    print_output(ticket, elements)
+    print_output(ticket, parse_afip_response(ticket))
 
 
 if __name__ == '__main__':
