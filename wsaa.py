@@ -51,7 +51,7 @@ from functions import utils
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.8.8'
+__version__ = '0.8.10'
 
 # Activa o desactiva el modo DEBUG
 DEBUG = False
@@ -159,9 +159,6 @@ def cli_parser(argv=None):
     parser.add_argument(
         '--web-service',
         help='define el WebService al que se le solicita acceso')
-    parser.add_argument(
-        '--cuit',
-        help='define el CUIT que solicita el acceso')
     parser.add_argument(
         '--certificate',
         help='define la ubicación del certificado vinculado al CUIT')
@@ -277,13 +274,17 @@ def main(cli_args, debug):
     args = cli_parser(cli_args)
 
     # Obtengo los datos de configuración
-    data = utils.get_config_data(args)
+    data = utils.get_config_data(args, section=__file__[:-3])
+
+    # Si data es un string entonces obtuve un mensaje de error al obtener los
+    # datos de configuración
+    if isinstance(data, str):
+        raise SystemExit(data)
 
     # Muestro las opciones de configuración via stderr si estoy en modo debug
     if args['debug'] or debug:
         logging.basicConfig(stream=sys.stderr, level=logging.INFO)
         logging.info('|============  Configuración  ============')
-        logging.info('| CUIT:          %s', data['cuit'])
         logging.info('| Certificado:   %s', data['certificate'])
         logging.info('| Clave Privada: %s', data['private_key'])
         logging.info('| Frase Secreta: %s',

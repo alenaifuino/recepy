@@ -16,17 +16,18 @@ Módulo con funciones auxiliares para la gestión de:
 """
 
 import json
+import os
 from datetime import datetime, timedelta
 from socket import gaierror
 
 from ntplib import NTPClient, NTPException
 
-from . import validation
+#from . import validation
 
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.3.1"
+__version__ = "0.4.2"
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
@@ -49,20 +50,23 @@ def read_config(file, *, section=None):
     return config[section]
 
 
-def get_config_data(args):
+def get_config_data(args, section):
     """
     Obtengo los datos de configuración y devuelvo un diccionario con los mismos
     """
+    # Inicializo el flag para almacenar los mensajes de error
+    error_msg = False
+
     # Obtengo los datos del archivo de configuración
-    if not validation.check_file_exists(CONFIG_FILE):
-        raise SystemExit('No se encontró el archivo de configuración')
-    elif not validation.check_file_permission(CONFIG_FILE, permission='r'):
-        raise SystemExit('El archivo de configuración no tiene permiso de '
-                         'lectura')
+    #config_data = read_config(CONFIG_FILE, section='wsaa')
+    if not os.path.isfile(CONFIG_FILE):
+        error_msg = 'No se encontró el archivo de configuración'
+    elif not os.access(CONFIG_FILE, os.R_OK):
+        error_msg = 'El archivo de configuración no tiene permiso de lectura'
     else:
-        config_data = read_config(CONFIG_FILE, section='wsaa')
+        config_data = read_config(CONFIG_FILE, section=section)
         if not config_data:
-            raise SystemExit('Sección inexistente en archivo de configuración')
+            error_msg = 'Sección inexistente en archivo de configuración'
 
     # Diccionario para almacenar los datos de configuración
     data = {}
@@ -72,39 +76,35 @@ def get_config_data(args):
 
     # Obtengo el CUIT de la línea de comando o el archivo de configuración en
     # su defecto eliminado los guiones
-    data['cuit'] = (
-        args['cuit']
-        if args['cuit']
-        else config_data['cuit']).replace('-', '')
+    #data['cuit'] = (
+    #    args['cuit']
+    #    if args['cuit']
+    #    else config_data['cuit']).replace('-', '')
 
-    if not data['cuit']:
-        raise SystemExit('Debe definir el CUIT que solicita el TA')
-    elif not validation.check_cuit(data['cuit']):
-        raise SystemExit('El CUIT suministrado es inválido')
+    #if not data['cuit']:
+    #    error_msg = 'Debe definir el CUIT que solicita el TA'
+    #elif not validation.check_cuit(data['cuit']):
+    #    error_msg = 'El CUIT suministrado es inválido'
 
     # Certificado
     data['certificate'] = (
         args['certificate']
         if args['certificate']
         else config_data[data['connection'] + '_cert'])
-    if not validation.check_file_exists(data['certificate']):
-        raise SystemExit('No se encontró el archivo de certificado')
-    elif not validation.check_file_permission(data['certificate'],
-                                              permission='r'):
-        raise SystemExit('El archivo de certificado no tiene permisos de '
-                         'lectura')
+    if not os.path.isfile(data['certificate']):
+        error_msg = 'No se encontró el archivo de certificado'
+    elif not os.access(data['certificate'], os.R_OK):
+        error_msg = 'El archivo de certificado no tiene permisos de lectura'
 
     # Clave Privada
     data['private_key'] = (
         args['private_key']
         if args['private_key']
         else config_data['private_key'])
-    if not validation.check_file_exists(data['private_key']):
-        raise SystemExit('No se encontró el archivo de clave privada')
-    elif not validation.check_file_permission(data['private_key'],
-                                              permission='r'):
-        raise SystemExit('El archivo de clave privada no tiene permisos de '
-                         'lectura')
+    if not os.path.isfile(data['private_key']):
+        error_msg = 'No se encontró el archivo de clave privada'
+    elif not os.access(data['private_key'], os.R_OK):
+        error_msg = 'El archivo de clave privada no tiene permisos de lectura'
 
     # Frase Secreta
     data['passphrase'] = (
@@ -114,12 +114,10 @@ def get_config_data(args):
 
     # Certificado de Autoridad Certificante (CA AFIP)
     data['cacert'] = config_data['cacert']
-    if not validation.check_file_exists(data['cacert']):
-        raise SystemExit('No se encontró el archivo de CA de AFIP')
-    elif not validation.check_file_permission(data['cacert'],
-                                              permission='r'):
-        raise SystemExit('El archivo de CA de AFIP no tiene permisos de '
-                         'lectura')
+    if not os.path.isfile(data['cacert']):
+        error_msg = 'No se encontró el archivo de CA de AFIP'
+    elif not os.access(data['cacert'], os.R_OK):
+        error_msg = 'El archivo de CA de AFIP no tiene permisos de lectura'
 
     # Establezco URL de conexión dependiendo si estoy en testing o production
     data['wsdl_url'] = config_data[data['connection'] + '_wsdl']
@@ -127,7 +125,7 @@ def get_config_data(args):
     # Nombre del WebService al que se le solicitará ticket acceso
     data['web_service'] = args['web_service']
 
-    return data
+    return error_msg if error_msg else data
 
 
 # Fecha
