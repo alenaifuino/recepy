@@ -13,33 +13,10 @@
 Módulo con funciones auxiliares para la gestión de validación de input
 """
 
-
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.2.6"
-
-
-def check_file_exists(file):
-    """
-    Valida que un archivo exista
-    """
-    try:
-        with open(file, 'r') as _:
-            return True
-    except FileNotFoundError:
-        return False
-
-
-def check_file_permission(file, *, permission='r+'):
-    """
-    Valida que un archivo tenga permisos correspondientes
-    """
-    try:
-        with open(file, permission) as _:
-            return True
-    except PermissionError:
-        return False
+__version__ = "0.3.1"
 
 
 def check_cuit(cuit):
