@@ -1,6 +1,5 @@
 {
     "wsaa": {
-        "cuit": "",
         "test_cert": "config/certificates/testing.crt",
         "prod_cert": "config/certificates/production.crt",
         "private_key": "config/certificates/private.key",
