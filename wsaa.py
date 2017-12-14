@@ -32,6 +32,7 @@ http://www.afip.gov.ar/ws/WSAA/Especificacion_Tecnica_WSAA_1.2.2.pdf
 import argparse
 import logging
 import random
+import os
 import sys
 from base64 import b64encode
 from datetime import timedelta
@@ -50,7 +51,7 @@ from functions import utils, validation
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.7.3'
+__version__ = '0.8.7'
 
 # Define el archivo de configuración
 CONFIG_FILE = 'config/config.json'
@@ -334,10 +335,24 @@ def print_output(ticket, elements):
     """
     Imprime la salida final del script
     """
-    print('Ticket en: {:>27}'.format(ticket))
-    print('Token: {:>38}'.format(elements['token'][:25] + '...'))
-    print('Sign: {:>39}'.format(elements['sign'][:25] + '...'))
-    print('Expiration Time: {}'.format(elements['expiration_time']))
+    # Diccionario con los datos de salida
+    data = {
+        'Ticket en: ': ticket,
+        'Token: ': elements['token'][:25],
+        'Sign: ': elements['sign'][:25],
+        'Expiration Time: ': elements['expiration_time']
+    }
+
+    # Obtengo la etiqueta más larga para hacer el padding adecuado
+    length = 0
+    for label in data:
+        if len(label) > length:
+            length = len(label)
+
+    # Imprimo la combinación etiqueta - valor
+    for label, value in data.items():
+        spaces = (length - len(label)) * ' '
+        print('{}{}{}'.format(label, spaces, value))
 
 
 def main(cli_args, debug):
@@ -364,8 +379,14 @@ def main(cli_args, debug):
         logging.info('| WebService:    %s', data['web_service'])
         logging.info('|=================  ---  =================')
 
+    # Directorio de salida
+    output_dir = 'data/wsaa/'
+
+    # Creo el directorio si este no existe
+    os.makedirs(os.path.dirname(output_dir), exist_ok=True)
+
     # Defino el archivo y ruta donde se guardará el ticket
-    ticket = 'data/wsaa/' + 'tra_{}.xml'.format(data['web_service'])
+    ticket = output_dir + 'tra_{}.xml'.format(data['web_service'])
 
     # Verifico si ya existe un TRA válido
     try:
