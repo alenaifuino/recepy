@@ -46,13 +46,13 @@ from zeep import exceptions as zeep_exceptions
 from zeep import Client
 from zeep.transports import Transport
 
-from config.config import DEBUG
+from config.config import DEBUG, WEB_SERVICES
 from functions import utils
 
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.9.1'
+__version__ = '0.9.4'
 
 
 class WSAA():
@@ -148,9 +148,6 @@ def cli_parser(argv=None):
     # TODO: crear una clase y transferir el contenido a functions/utils
     # TODO: traducir mensajes internos de argparse al español
 
-    # Tupla con los WebServices soportados
-    web_services = ('ws_sr_padron_a4', 'wsfe',)
-
     # Establezco los comandos soportados
     parser = argparse.ArgumentParser()
 
@@ -185,10 +182,11 @@ def cli_parser(argv=None):
     if args.web_service is None:
         raise parser.error(
             'Debe definir el WebService al que quiere solicitar acceso')
-    elif args.web_service not in web_services:
+    elif args.web_service not in WEB_SERVICES:
+        print(WEB_SERVICES)
         raise parser.error(
             'WebService desconocido. WebServices habilitados: {}'.format(
-                ', '.join([i for i in web_services])))
+                WEB_SERVICES))
     else:
         return vars(args)
 
@@ -247,8 +245,8 @@ def print_output(ticket, elements):
     # Diccionario con los datos de salida
     data = {
         'Ticket en: ': ticket,
-        'Token: ': elements['token'][:25],
-        'Sign: ': elements['sign'][:25],
+        'Token: ': elements['token'][:25] + '...',
+        'Sign: ': elements['sign'][:25] + '...',
         'Expiration Time: ': elements['expiration_time']
     }
 
@@ -272,7 +270,10 @@ def main(cli_args, debug):
     args = cli_parser(cli_args)
 
     # Obtengo los datos de configuración
-    data = utils.get_config_data(args, section=__file__[:-3])
+    try:
+        data = utils.get_config_data(args, section=__file__[:-3])
+    except ValueError as error:
+        raise SystemExit(error)
 
     # Muestro las opciones de configuración via stderr si estoy en modo debug
     if args['debug'] or debug:

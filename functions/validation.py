@@ -16,7 +16,7 @@ Módulo con funciones auxiliares para la gestión de validación de input
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.3.1"
+__version__ = "0.4.1"
 
 
 def check_cuit(cuit):
@@ -43,3 +43,18 @@ def check_cuit(cuit):
         verificador = 9
 
     return verificador == int(cuit[10])
+
+
+def check_file(file, *, name, permission='r'):
+    """
+    Valida que un archivo exista y que tenga los permisos requeridos
+    """
+    try:
+        open(file, permission)
+    except FileNotFoundError:
+        raise ValueError('{}: no se encontró el archivo'.format(name))
+    except PermissionError:
+        raise ValueError(
+            '{}: no tiene los permisos requeridos'.format(name))
+
+    return True

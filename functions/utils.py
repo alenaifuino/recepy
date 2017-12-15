@@ -15,7 +15,6 @@ Módulo con funciones auxiliares para la gestión de:
     - Fecha
 """
 
-import os
 from datetime import datetime, timedelta
 from socket import gaierror
 
@@ -28,7 +27,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.5.1"
+__version__ = "0.5.6"
 
 
 # Archivo de configuración
@@ -40,7 +39,7 @@ def get_config_data(args, section):
     try:
         config_data = CONFIG[section]
     except KeyError:
-        raise SystemExit('Sección inexistente en archivo de configuración')
+        raise ValueError('Sección inexistente en archivo de configuración')
 
     # Diccionario para almacenar los datos de configuración
     data = {}
@@ -50,54 +49,30 @@ def get_config_data(args, section):
 
     # Valido los datos de configuración y los guardo en el diccionario data
     for key, value in config_data.items():
-        # Verifico los archivos de certificados
+        # Verifico el archivo de certificado
         if key == data['mode'] + '_cert':
-            # Asigno el valor de la línea de comandos si este está definido
             value = args['certificate'] if args['certificate'] else value
-            # Valido el archivo de certificado
-            if not os.path.isfile(value):
-                raise SystemExit('No se encontró el archivo {}'.format(key))
-            elif not os.access(value, os.R_OK):
-                raise SystemExit(
-                    'El archivo {} no tiene permisos de lectura'.format(key))
-            # Elimino el modo de conexión de la clave
+            validation.check_file(value, name=key)
             data['certificate'] = value
-        elif key is 'private_key':
-            # Asigno el valor de la línea de comandos si este está definido
+        elif key == 'private_key':
             value = args['private_key'] if args['private_key'] else value
-            # Valido el archivo de clave privada
-            if not os.path.isfile(value):
-                raise SystemExit('No se encontró el archivo {}'.format(key))
-            elif not os.access(value, os.R_OK):
-                raise SystemExit(
-                    'El archivo {} no tiene permisos de lectura'.format(key))
+            validation.check_file(value, name=key)
             data[key] = value
-        elif key is 'passphrase':
-            # Valido la frase secreta
+        elif key == 'ca_cert':
+            validation.check_file(value, name=key)
+            data[key] = value
+        elif key == 'passphrase':
             if not isinstance(value, str) and value is not None:
-                raise SystemExit('{} no es una cadena de texto'.format(key))
-            data[key] = value
-        elif key is 'ca_cert':
-            # Valido el archivo de certificado de CA
-            if not os.path.isfile(value):
-                raise SystemExit('No se encontró el archivo {}'.format(key))
-            elif not os.access(value, os.R_OK):
-                raise SystemExit(
-                    'El archivo {} no tiene permisos de lectura'.format(key))
+                raise ValueError('{}: no es una cadena de texto'.format(key))
             data[key] = value
         elif key == data['mode'] + '_wsdl':
-            # Valido el link de conexión wsdl
             if not isinstance(value, str):
-                raise SystemExit('{} no es una cadena de texto'.format(key))
-            # Elimino el modo de conexión de la clave
+                raise ValueError('{}: no es una cadena de texto'.format(key))
             data['wsdl'] = value
-        elif key is 'cuit':
-            # Asigno el valor de la línea de comandos si este está definido
+        elif key == 'cuit':
             value = (args['cuit'] if args['cuit'] else value).replace('-', '')
-            if not value:
-                raise SystemExit('Debe definir el CUIT que solicita el TA')
-            elif not validation.check_cuit(value):
-                raise SystemExit('El CUIT suministrado es inválido')
+            if not validation.check_cuit(value):
+                raise ValueError('{}: no es válido'.format(key))
 
     # Nombre del WebService al que se le solicitará ticket acceso
     data['web_service'] = args['web_service']

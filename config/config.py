@@ -16,12 +16,13 @@ Módulo de configuración de la aplicación recepy
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.1.0'
+__version__ = '0.1.2'
 
 
 # Activa o desactiva el modo DEBUG
 DEBUG = False
 
+# Diccionario con los valores de configuración
 CONFIG = {
     "wsaa": {
         "test_cert": "config/certificates/testing.crt",
@@ -41,3 +42,6 @@ CONFIG = {
         "prod_wsdl": "https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL"
     }
 }
+
+# Tupla con los WebServices soportados
+WEB_SERVICES = tuple(key for key in CONFIG if key is not 'wsaa')
