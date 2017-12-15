@@ -52,7 +52,7 @@ from functions import utils
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.9.4'
+__version__ = '0.9.5'
 
 
 class WSAA():
@@ -183,7 +183,6 @@ def cli_parser(argv=None):
         raise parser.error(
             'Debe definir el WebService al que quiere solicitar acceso')
     elif args.web_service not in WEB_SERVICES:
-        print(WEB_SERVICES)
         raise parser.error(
             'WebService desconocido. WebServices habilitados: {}'.format(
                 WEB_SERVICES))
