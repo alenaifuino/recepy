@@ -31,8 +31,8 @@ http://www.afip.gov.ar/ws/WSAA/Especificacion_Tecnica_WSAA_1.2.2.pdf
 
 import argparse
 import logging
-import random
 import os
+import random
 import sys
 from base64 import b64encode
 from datetime import timedelta
@@ -46,15 +46,13 @@ from zeep import exceptions as zeep_exceptions
 from zeep import Client
 from zeep.transports import Transport
 
+from config.config import DEBUG
 from functions import utils
 
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.8.10'
-
-# Activa o desactiva el modo DEBUG
-DEBUG = False
+__version__ = '0.9.1'
 
 
 class WSAA():
@@ -70,7 +68,7 @@ class WSAA():
         Crea un Ticket de Requerimiento de Acceso (TRA)
         """
         # Establezco el tipo de conexión para usar en el tag destination
-        dcn = 'wsaa' if self.data['connection'] == 'prod' else 'wsaahomo'
+        dcn = 'wsaa' if self.data['mode'] == 'prod' else 'wsaahomo'
         dest = 'cn=' + dcn + ',o=afip,c=ar,serialNumber=CUIT 33693450239'
 
         # Obtengo la fechahora actual
@@ -129,14 +127,14 @@ class WSAA():
         # información se mantiene de manera persistente
         session = Session()
         # Incluyo el certificado en formato PEM
-        session.verify = self.data['cacert']
+        session.verify = self.data['ca_cert']
 
         # Instancio Transport con la información de sesión y el timeout a
         # utilizar en la conexión
         transport = Transport(session=session, timeout=30)
 
         # Instancio Client con los datos del wsdl de WSAA y de transporte
-        client = Client(wsdl=self.data['wsdl_url'], transport=transport)
+        client = Client(wsdl=self.data['wsdl'], transport=transport)
 
         return client.service.loginCms(in0=cms)
 
@@ -276,11 +274,6 @@ def main(cli_args, debug):
     # Obtengo los datos de configuración
     data = utils.get_config_data(args, section=__file__[:-3])
 
-    # Si data es un string entonces obtuve un mensaje de error al obtener los
-    # datos de configuración
-    if isinstance(data, str):
-        raise SystemExit(data)
-
     # Muestro las opciones de configuración via stderr si estoy en modo debug
     if args['debug'] or debug:
         logging.basicConfig(stream=sys.stderr, level=logging.INFO)
@@ -289,8 +282,8 @@ def main(cli_args, debug):
         logging.info('| Clave Privada: %s', data['private_key'])
         logging.info('| Frase Secreta: %s',
                      '******' if data['passphrase'] else None)
-        logging.info('| CA AFIP:       %s', data['cacert'])
-        logging.info('| URL WSDL:      %s', data['wsdl_url'])
+        logging.info('| CA AFIP:       %s', data['ca_cert'])
+        logging.info('| WSDL:          %s', data['wsdl'])
         logging.info('| WebService:    %s', data['web_service'])
         logging.info('|=================  ---  =================')
 

@@ -15,117 +15,94 @@ Módulo con funciones auxiliares para la gestión de:
     - Fecha
 """
 
-import json
 import os
 from datetime import datetime, timedelta
 from socket import gaierror
 
 from ntplib import NTPClient, NTPException
 
-#from . import validation
+from config.config import CONFIG
+
+from . import validation
 
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.4.2"
-
-# Define el archivo de configuración
-CONFIG_FILE = 'config/config.json'
+__version__ = "0.5.1"
 
 
 # Archivo de configuración
-def read_config(file, *, section=None):
-    """
-    Devuelve el archivo de configuración. Si recibe 'section', sólo se
-    devuelve esa sección
-    """
-    with open(file, 'r') as _:
-        config = json.load(_)
-
-    if not section:
-        return config
-    elif section not in config:
-        return None
-
-    return config[section]
-
-
 def get_config_data(args, section):
     """
     Obtengo los datos de configuración y devuelvo un diccionario con los mismos
     """
-    # Inicializo el flag para almacenar los mensajes de error
-    error_msg = False
-
     # Obtengo los datos del archivo de configuración
-    #config_data = read_config(CONFIG_FILE, section='wsaa')
-    if not os.path.isfile(CONFIG_FILE):
-        error_msg = 'No se encontró el archivo de configuración'
-    elif not os.access(CONFIG_FILE, os.R_OK):
-        error_msg = 'El archivo de configuración no tiene permiso de lectura'
-    else:
-        config_data = read_config(CONFIG_FILE, section=section)
-        if not config_data:
-            error_msg = 'Sección inexistente en archivo de configuración'
+    try:
+        config_data = CONFIG[section]
+    except KeyError:
+        raise SystemExit('Sección inexistente en archivo de configuración')
 
     # Diccionario para almacenar los datos de configuración
     data = {}
 
     # Defino el tipo de conexión: testing o production
-    data['connection'] = 'test' if not args['production'] else 'prod'
+    data['mode'] = 'test' if not args['production'] else 'prod'
 
-    # Obtengo el CUIT de la línea de comando o el archivo de configuración en
-    # su defecto eliminado los guiones
-    #data['cuit'] = (
-    #    args['cuit']
-    #    if args['cuit']
-    #    else config_data['cuit']).replace('-', '')
-
-    #if not data['cuit']:
-    #    error_msg = 'Debe definir el CUIT que solicita el TA'
-    #elif not validation.check_cuit(data['cuit']):
-    #    error_msg = 'El CUIT suministrado es inválido'
-
-    # Certificado
-    data['certificate'] = (
-        args['certificate']
-        if args['certificate']
-        else config_data[data['connection'] + '_cert'])
-    if not os.path.isfile(data['certificate']):
-        error_msg = 'No se encontró el archivo de certificado'
-    elif not os.access(data['certificate'], os.R_OK):
-        error_msg = 'El archivo de certificado no tiene permisos de lectura'
-
-    # Clave Privada
-    data['private_key'] = (
-        args['private_key']
-        if args['private_key']
-        else config_data['private_key'])
-    if not os.path.isfile(data['private_key']):
-        error_msg = 'No se encontró el archivo de clave privada'
-    elif not os.access(data['private_key'], os.R_OK):
-        error_msg = 'El archivo de clave privada no tiene permisos de lectura'
-
-    # Frase Secreta
-    data['passphrase'] = (
-        config_data['passphrase']
-        if config_data['passphrase']
-        else None)
-
-    # Certificado de Autoridad Certificante (CA AFIP)
-    data['cacert'] = config_data['cacert']
-    if not os.path.isfile(data['cacert']):
-        error_msg = 'No se encontró el archivo de CA de AFIP'
-    elif not os.access(data['cacert'], os.R_OK):
-        error_msg = 'El archivo de CA de AFIP no tiene permisos de lectura'
-
-    # Establezco URL de conexión dependiendo si estoy en testing o production
-    data['wsdl_url'] = config_data[data['connection'] + '_wsdl']
+    # Valido los datos de configuración y los guardo en el diccionario data
+    for key, value in config_data.items():
+        # Verifico los archivos de certificados
+        if key == data['mode'] + '_cert':
+            # Asigno el valor de la línea de comandos si este está definido
+            value = args['certificate'] if args['certificate'] else value
+            # Valido el archivo de certificado
+            if not os.path.isfile(value):
+                raise SystemExit('No se encontró el archivo {}'.format(key))
+            elif not os.access(value, os.R_OK):
+                raise SystemExit(
+                    'El archivo {} no tiene permisos de lectura'.format(key))
+            # Elimino el modo de conexión de la clave
+            data['certificate'] = value
+        elif key is 'private_key':
+            # Asigno el valor de la línea de comandos si este está definido
+            value = args['private_key'] if args['private_key'] else value
+            # Valido el archivo de clave privada
+            if not os.path.isfile(value):
+                raise SystemExit('No se encontró el archivo {}'.format(key))
+            elif not os.access(value, os.R_OK):
+                raise SystemExit(
+                    'El archivo {} no tiene permisos de lectura'.format(key))
+            data[key] = value
+        elif key is 'passphrase':
+            # Valido la frase secreta
+            if not isinstance(value, str) and value is not None:
+                raise SystemExit('{} no es una cadena de texto'.format(key))
+            data[key] = value
+        elif key is 'ca_cert':
+            # Valido el archivo de certificado de CA
+            if not os.path.isfile(value):
+                raise SystemExit('No se encontró el archivo {}'.format(key))
+            elif not os.access(value, os.R_OK):
+                raise SystemExit(
+                    'El archivo {} no tiene permisos de lectura'.format(key))
+            data[key] = value
+        elif key == data['mode'] + '_wsdl':
+            # Valido el link de conexión wsdl
+            if not isinstance(value, str):
+                raise SystemExit('{} no es una cadena de texto'.format(key))
+            # Elimino el modo de conexión de la clave
+            data['wsdl'] = value
+        elif key is 'cuit':
+            # Asigno el valor de la línea de comandos si este está definido
+            value = (args['cuit'] if args['cuit'] else value).replace('-', '')
+            if not value:
+                raise SystemExit('Debe definir el CUIT que solicita el TA')
+            elif not validation.check_cuit(value):
+                raise SystemExit('El CUIT suministrado es inválido')
 
     # Nombre del WebService al que se le solicitará ticket acceso
     data['web_service'] = args['web_service']
 
-    return error_msg if error_msg else data
+    return data
 
 
 # Fecha
