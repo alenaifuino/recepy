@@ -149,7 +149,7 @@ def cli_parser(argv=None):
     # TODO: traducir mensajes internos de argparse al español
 
     # Establezco los comandos soportados
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog='WSAA')
 
     parser.add_argument(
         '--web-service',
@@ -171,6 +171,10 @@ def cli_parser(argv=None):
         '--debug',
         help='envía los mensajes de debug a stderr',
         action='store_true')
+    parser.add_argument(
+        '--version',
+        action='version',
+        version='%(prog)s ' + __version__)
 
     # Elimino el nombre del script del listado de línea de comandos
     argv = argv if __file__ not in argv else argv[1:]
