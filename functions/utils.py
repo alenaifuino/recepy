@@ -74,7 +74,7 @@ def get_config_data(args, section):
             if not validation.check_cuit(value):
                 raise ValueError('{}: no es válido'.format(key))
 
-    # Nombre del WebService al que se le solicitará ticket acceso
+    # Nombre del Web Service al que se le solicitará ticket acceso
     data['web_service'] = args['web_service']
 
     return data

@@ -43,5 +43,5 @@ CONFIG = {
     }
 }
 
-# Tupla con los WebServices soportados
+# Tupla con los Web Services soportados
 WEB_SERVICES = tuple(key for key in CONFIG if key is not 'wsaa')

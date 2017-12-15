@@ -11,7 +11,7 @@
 # General Public License for more details.
 """
 Módulo que permite obtener un ticket de autorización (TA) del
-WebService de Autenticación y Autorización (WSAA) de AFIP.
+Web Service de Autenticación y Autorización (WSAA) de AFIP.
 
 Las operaciones que se realizan en este módulo son:
     - Generar un "Ticket de Requerimiento de Acceso" (TRA)
@@ -57,7 +57,7 @@ __version__ = '0.9.6'
 
 class WSAA():
     """
-    Clase que se usa de interfaz para el WebService de Autenticación
+    Clase que se usa de interfaz para el Web Service de Autenticación
     y Autorización de AFIP
     """
     def __init__(self, data):
@@ -120,7 +120,7 @@ class WSAA():
 
     def login_cms(self, cms):
         """
-        Conecta al WebService SOAP de AFIP y obtiene respuesta en base al CMS
+        Conecta al Web Service SOAP de AFIP y obtiene respuesta en base al CMS
         que se envía
         """
         # Instancio Session para validar la conexión SSL, de esta manera la
@@ -153,7 +153,7 @@ def cli_parser(argv=None):
 
     parser.add_argument(
         '--web-service',
-        help='define el WebService al que se le solicita acceso')
+        help='define el Web Service al que se le solicita acceso')
     parser.add_argument(
         '--certificate',
         help='define la ubicación del certificado vinculado al CUIT')
@@ -169,7 +169,7 @@ def cli_parser(argv=None):
         action='store_true')
     parser.add_argument(
         '--debug',
-        help='envía los mensajes de debug en stderr',
+        help='envía los mensajes de debug a stderr',
         action='store_true')
 
     # Elimino el nombre del script del listado de línea de comandos
@@ -178,13 +178,14 @@ def cli_parser(argv=None):
     # Parseo la línea de comandos
     args = parser.parse_args(argv)
 
-    # El web service es mandatorio y debe ser definido
+    # El Web Service es mandatorio y debe ser definido
     if args.web_service is None:
         raise parser.error(
-            'Debe definir el WebService al que quiere solicitar acceso')
+            'Debe definir el Web Service al que quiere solicitar acceso')
+    # Chequeo los Web Services habilitados
     elif args.web_service not in WEB_SERVICES:
         raise parser.error(
-            'WebService desconocido. WebServices habilitados: {}'.format(
+            'Web Service desconocido. Web Services habilitados: {}'.format(
                 WEB_SERVICES))
     else:
         return vars(args)
@@ -284,7 +285,7 @@ def main(cli_args):
                      '******' if data['passphrase'] else None)
         logging.info('| CA AFIP:       %s', data['ca_cert'])
         logging.info('| WSDL:          %s', data['wsdl'])
-        logging.info('| WebService:    %s', data['web_service'])
+        logging.info('| Web Service:   %s', data['web_service'])
         logging.info('|=================  ---  =================')
 
     # Directorio de salida
@@ -334,7 +335,7 @@ def main(cli_args):
                              'SSL del WSAA es incorrecto')
         except requests_exceptions.ConnectionError:
             raise SystemExit('No se pudo establecer conexión con el '
-                             'webservice WSAA de AFIP')
+                             'Web Service WSAA de AFIP')
         except zeep_exceptions.Fault as error:
             raise SystemExit(
                 'Código: {} - Mensaje: {}'.format(error.code, error.message))
