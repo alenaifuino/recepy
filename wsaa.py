@@ -52,7 +52,7 @@ from functions import utils
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.9.5'
+__version__ = '0.9.6'
 
 
 class WSAA():
@@ -261,7 +261,7 @@ def print_output(ticket, elements):
         print('{}{}{}'.format(label, spaces, value))
 
 
-def main(cli_args, debug):
+def main(cli_args):
     """
     Función utilizada para la ejecución del script por línea de comandos
     """
@@ -275,7 +275,7 @@ def main(cli_args, debug):
         raise SystemExit(error)
 
     # Muestro las opciones de configuración via stderr si estoy en modo debug
-    if args['debug'] or debug:
+    if args['debug'] or DEBUG:
         logging.basicConfig(stream=sys.stderr, level=logging.INFO)
         logging.info('|============  Configuración  ============')
         logging.info('| Certificado:   %s', data['certificate'])
@@ -311,7 +311,7 @@ def main(cli_args, debug):
         tra = wsaa.create_tra()
 
         # Muestro el TRA si estoy en modo debug
-        if args['debug'] or debug:
+        if args['debug'] or DEBUG:
             logging.info('|=================  TRA  =================')
             logging.info('|\n' + str(tra, 'utf-8').strip('\n'))
             logging.info('|=================  ---  =================')
@@ -341,7 +341,7 @@ def main(cli_args, debug):
 
         # Muestro el mensaje de éxito y no el mensaje propiamente dicho ya que
         # el mismo no aporta nada al debug
-        if args['debug'] or debug:
+        if args['debug'] or DEBUG:
             logging.info('|=================  CMS  =================')
             logging.info('| Mensaje CMS en Base64 creado exitosamente')
             logging.info('|=================  ---  =================')
@@ -355,4 +355,4 @@ def main(cli_args, debug):
 
 
 if __name__ == '__main__':
-    main(sys.argv, DEBUG)
+    main(sys.argv)
