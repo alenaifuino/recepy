@@ -38,7 +38,7 @@ from base64 import b64encode
 from datetime import timedelta
 from subprocess import PIPE, Popen
 
-import dateutil.parser
+from dateutil import parser
 from lxml import builder, etree
 from requests import exceptions as requests_exceptions
 from requests import Session
@@ -52,7 +52,15 @@ from functions import utils
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.9.6'
+__version__ = '1.0.1'
+
+
+# Directorio donde se guardan los archivos del Web Service
+OUTPUT_DIR = 'data/wsaa/'
+
+# Nombre del ticket de autorización donde <ws> será reemplazado por el web
+# service que esté solicitando el acceso
+TICKET = 'tra_<ws>.xml'
 
 
 class WSAA():
@@ -60,10 +68,12 @@ class WSAA():
     Clase que se usa de interfaz para el Web Service de Autenticación
     y Autorización de AFIP
     """
-    def __init__(self, data):
+    def __init__(self, data, debug):
         self.data = data
+        self.debug = debug
+        self.token = self.sign = self.expiration_time = None
 
-    def create_tra(self):
+    def __create_tra(self):
         """
         Crea un Ticket de Requerimiento de Acceso (TRA)
         """
@@ -104,7 +114,7 @@ class WSAA():
         # Devuelvo el TRA generado en formato bytes
         return tra
 
-    def create_cms(self, tra):
+    def __create_cms(self, tra):
         """
         Genera un CMS que contiene el TRA, la firma electrónica y el
         certificado X.509 del contribuyente según especificación técnica de
@@ -118,7 +128,7 @@ class WSAA():
         # Devuelvo stdout del output de communicate
         return cms
 
-    def login_cms(self, cms):
+    def __login_cms(self, cms):
         """
         Conecta al Web Service SOAP de AFIP y obtiene respuesta en base al CMS
         que se envía
@@ -136,7 +146,114 @@ class WSAA():
         # Instancio Client con los datos del wsdl de WSAA y de transporte
         client = Client(wsdl=self.data['wsdl'], transport=transport)
 
-        return client.service.loginCms(in0=cms)
+        # XML de respuesta
+        response = client.service.loginCms(in0=cms)
+
+        # Almaceno los atributos
+        self.token = parse_afip_response(response)['token']
+        self.sign = parse_afip_response(response)['sign']
+        self.expiration_time = parse_afip_response(response)['expiration_time']
+
+        return response
+
+    def get_ticket_path(self):
+        """
+        Devuelve el path y archivo donde se almacena el ticket
+        """
+        # Creo el directorio si este no existe
+        os.makedirs(os.path.dirname(OUTPUT_DIR), exist_ok=True)
+
+        # Defino el archivo y ruta donde se guardará el ticket
+        return OUTPUT_DIR + TICKET.replace('<ws>', self.data['web_service'])
+
+    def get_ticket(self):
+        """
+        Obtiene el ticket de acceso del directorio local si es válido o
+        solicita uno nuevo al Web Service de AFIP
+        """
+        # Obtengo el ticket del disco local
+        ticket = self.get_ticket_path()
+
+        # Verifico si hay un ticket en disco y obtengo sus datos
+        try:
+            with open(ticket, 'r') as file:
+                xml = file.read()
+
+            # Obtengo los elementos del archivo XML
+            elements = parse_afip_response(xml)
+
+            # Verifico si el ticket todavía es válido
+            if valid_tra(elements['expiration_time']):
+                self.token = elements['token']
+                self.sign = elements['sign']
+                self.expiration_time = elements['expiration_time']
+        except FileNotFoundError:
+            # Verifico si el objeto ya tiene los datos de un TRA en sus
+            # atributos y si estos son válidos
+            if self.expiration_time and not valid_tra(self.expiration_time):
+                self.expiration_time = None
+
+        # El TRA no existe o no está vigente
+        if not self.expiration_time:
+            # Creo el Ticket de Requerimiento de Acceso (TRA)
+            tra = self.__create_tra()
+
+            # Muestro el TRA si estoy en modo debug
+            if self.debug:
+                logging.info('|=================  TRA  =================')
+                logging.info('|\n' + str(tra, 'utf-8').strip('\n'))
+                logging.info('|=================  ---  =================')
+
+            # Genero un mensaje CMS del tipo SignedData
+            try:
+                cms = self.__create_cms(tra)
+            except FileNotFoundError:
+                raise SystemExit('No se pudo generar el mensaje CMS: '
+                                 'el ejecutable openssl no está disponible')
+
+            # Codifico el mensaje CMS en formato Base64
+            cms = b64encode(cms)
+
+            # Muestro el mensaje de éxito y no el mensaje CMS propiamente dicho
+            # ya que el mismo no aporta nada al debug
+            if self.debug:
+                logging.info('|=================  CMS  =================')
+                logging.info('| Mensaje CMS en Base64 creado exitosamente')
+                logging.info('|=================  ---  =================')
+
+            # Envío el CMS al WSAA de AFIP
+            try:
+                # Obtengo la respuesta de AFIP
+                response = self.__login_cms(cms)
+
+                # Genero el archivo con la respuesta de AFIP
+                with open(ticket, 'w') as file:
+                    file.write(response)
+
+                # Parseo la respuesta de AFIP
+                elements = parse_afip_response(response)
+
+                # Actualizo los atributos del objeto
+                self.token = elements['token']
+                self.sign = elements['sign']
+                self.expiration_time = elements['expiration_time']
+            except requests_exceptions.SSLError:
+                raise SystemExit('El CA suministrado para validación SSL del '
+                                 'WSAA es incorrecto')
+            except requests_exceptions.ConnectionError:
+                raise SystemExit('No se pudo establecer conexión con el '
+                                 'Web Service WSAA de AFIP')
+            except zeep_exceptions.Fault as error:
+                raise SystemExit(
+                    'Error: {} - {}'.format(error.code, error.message))
+
+        # Diccionario con los valores devueltos por AFIP
+        output = {
+            'token': self.token,
+            'sign': self.sign,
+            'expiration_time': self.expiration_time}
+
+        return output
 
 
 def cli_parser(argv=None):
@@ -145,33 +262,32 @@ def cli_parser(argv=None):
     soportados. Si los argumentos mandatorios fueron suministrados
     devuelve el listado completo.
     """
-    # TODO: crear una clase y transferir el contenido a functions/utils
     # TODO: traducir mensajes internos de argparse al español
 
     # Establezco los comandos soportados
-    parser = argparse.ArgumentParser(prog='WSAA')
+    parse_cli = argparse.ArgumentParser(prog='WSAA')
 
-    parser.add_argument(
+    parse_cli.add_argument(
         '--web-service',
         help='define el Web Service al que se le solicita acceso')
-    parser.add_argument(
+    parse_cli.add_argument(
         '--certificate',
         help='define la ubicación del certificado vinculado al CUIT')
-    parser.add_argument(
+    parse_cli.add_argument(
         '--private-key',
         help='define la ubicación de la clave privada vinculada al CUIT')
-    parser.add_argument(
+    parse_cli.add_argument(
         '--passphrase',
         help='define la frase secreta de la clave privada')
-    parser.add_argument(
+    parse_cli.add_argument(
         '--production',
         help='solicita el acceso al ambiente de producción',
         action='store_true')
-    parser.add_argument(
+    parse_cli.add_argument(
         '--debug',
         help='envía los mensajes de debug a stderr',
         action='store_true')
-    parser.add_argument(
+    parse_cli.add_argument(
         '--version',
         action='version',
         version='%(prog)s ' + __version__)
@@ -180,33 +296,33 @@ def cli_parser(argv=None):
     argv = argv if __file__ not in argv else argv[1:]
 
     # Parseo la línea de comandos
-    args = parser.parse_args(argv)
+    args = parse_cli.parse_args(argv)
 
     # El Web Service es mandatorio y debe ser definido
     if args.web_service is None:
-        raise parser.error(
+        raise parse_cli.error(
             'Debe definir el Web Service al que quiere solicitar acceso')
     # Chequeo los Web Services habilitados
     elif args.web_service not in WEB_SERVICES:
-        raise parser.error(
+        raise parse_cli.error(
             'Web Service desconocido. Web Services habilitados: {}'.format(
                 WEB_SERVICES))
     else:
         return vars(args)
 
 
-def tra_exist(ticket):
+def valid_tra(ticket_time):
     """
-    Verifica si ya existe un ticket de acceso (TRA) y que esté vigente
+    Verifica si el ticket de acceso está vigente
     """
-    # Verifico si ya existe un TA previo y es válido
-    with open(ticket, 'r') as ta_xml:
-        # Obtengo el arbol XML y luego el elemento expirationTime
-        tree = etree.parse(ta_xml).getroot()
-        expiration_time = tree.find('header').find('expirationTime')
+    # Defino un delta el cuál sustraigo de expiration_time para evitar
+    # situaciones donde se de como válido un ticket pero este expire pocos
+    # segundos después, ocasionando que el ticket no sea válido por haber
+    # vencido entre el momento que se validó y el que fue utilizado
+    delta = 120
 
-    # Convierto el string expiration_time en formato datetime
-    expiration_time = dateutil.parser.parse(expiration_time.text)
+    # Convierto el string ticket_time en formato datetime y sustraigo delta
+    expiration_time = parser.parse(ticket_time) - timedelta(seconds=delta)
 
     # Obtengo la fechahora actual
     time = utils.get_datetime()
@@ -215,7 +331,7 @@ def tra_exist(ticket):
     timezone = utils.get_timezone(time.timestamp())
 
     # Convierto la fechahora de AFIP a formato datetime aware
-    current_time = dateutil.parser.parse(str(time) + timezone)
+    current_time = parser.parse(str(time) + timezone)
 
     # Verifico si la fecha de expiración es mayor que la de AFIP en cuyo caso
     # considero que el ticket es todavía válido
@@ -225,33 +341,34 @@ def tra_exist(ticket):
     return False
 
 
-def parse_afip_response(ticket):
+def parse_afip_response(xml_data):
     """
-    Obtiene los elementos del XML de respuesta de AFIP
+    Obtiene los elementos de la respuesta provista por AFIP
     """
-    with open(ticket, 'r') as file:
-        tree = etree.parse(file).getroot()
+    # Armo el árbol del string que recibo
+    tree = etree.fromstring(bytes(xml_data, 'utf-8'))
 
     # Inicializo el diccionario de respuesta
-    xml_e = {}
+    output = {}
 
-    xml_e['token'] = tree.find('credentials').find('token').text
-    xml_e['sign'] = tree.find('credentials').find('sign').text
-    xml_e['expiration_time'] = tree.find('header').find('expirationTime').text
+    # Extraigo los elementos que requiero
+    output['token'] = tree.find('credentials').find('token').text
+    output['sign'] = tree.find('credentials').find('sign').text
+    output['expiration_time'] = tree.find('header').find('expirationTime').text
 
-    return xml_e
+    return output
 
 
-def print_output(ticket, elements):
+def print_output(ticket_data):
     """
     Imprime la salida final del script
     """
     # Diccionario con los datos de salida
     data = {
-        'Ticket en: ': ticket,
-        'Token: ': elements['token'][:25] + '...',
-        'Sign: ': elements['sign'][:25] + '...',
-        'Expiration Time: ': elements['expiration_time']
+        'Ticket en: ': ticket_data['path'],
+        'Token: ': ticket_data['token'][:25] + '...',
+        'Sign: ': ticket_data['sign'][:25] + '...',
+        'Expiration Time: ': ticket_data['expiration_time']
     }
 
     # Obtengo la etiqueta más larga para hacer el padding adecuado
@@ -273,14 +390,17 @@ def main(cli_args):
     # Obtengo los parámetros pasados por línea de comandos
     args = cli_parser(cli_args)
 
+    # Establezco el modo debug
+    debug = args['debug'] or DEBUG
+
     # Obtengo los datos de configuración
     try:
         data = utils.get_config_data(args, section=__file__[:-3])
     except ValueError as error:
         raise SystemExit(error)
 
-    # Muestro las opciones de configuración via stderr si estoy en modo debug
-    if args['debug'] or DEBUG:
+    # Muestro las opciones de configuración via stderr
+    if debug:
         logging.basicConfig(stream=sys.stderr, level=logging.INFO)
         logging.info('|============  Configuración  ============')
         logging.info('| Certificado:   %s', data['certificate'])
@@ -292,71 +412,17 @@ def main(cli_args):
         logging.info('| Web Service:   %s', data['web_service'])
         logging.info('|=================  ---  =================')
 
-    # Directorio de salida
-    output_dir = 'data/wsaa/'
+    # Creo el objeto de autenticación y autorización
+    wsaa = WSAA(data, debug)
 
-    # Creo el directorio si este no existe
-    os.makedirs(os.path.dirname(output_dir), exist_ok=True)
+    # Obtengo la respuesta de AFIP
+    ticket_data = wsaa.get_ticket()
 
-    # Defino el archivo y ruta donde se guardará el ticket
-    ticket = output_dir + 'tra_{}.xml'.format(data['web_service'])
-
-    # Verifico si ya existe un TRA válido
-    try:
-        valid_tra = tra_exist(ticket)
-    except FileNotFoundError:
-        valid_tra = False
-
-    # El TRA no existe o no está vigente
-    if not valid_tra:
-        # Creo el objeto de autenticación y autorización
-        wsaa = WSAA(data)
-
-        # Creo el Ticket de Requerimiento de Acceso (TRA)
-        tra = wsaa.create_tra()
-
-        # Muestro el TRA si estoy en modo debug
-        if args['debug'] or DEBUG:
-            logging.info('|=================  TRA  =================')
-            logging.info('|\n' + str(tra, 'utf-8').strip('\n'))
-            logging.info('|=================  ---  =================')
-
-        # Genero un mensaje CMS del tipo SignedData
-        try:
-            cms = wsaa.create_cms(tra)
-        except FileNotFoundError:
-            raise SystemExit('No se pudo generar el mensaje CMS: openssl no '
-                             'disponible')
-
-        # Codifico el mensaje CMS en formato Base64
-        cms = b64encode(cms)
-
-        # Envío el CMS al WSAA de AFIP
-        try:
-            response = wsaa.login_cms(cms)
-        except requests_exceptions.SSLError:
-            raise SystemExit('El certificado CA suministrado para validación '
-                             'SSL del WSAA es incorrecto')
-        except requests_exceptions.ConnectionError:
-            raise SystemExit('No se pudo establecer conexión con el '
-                             'Web Service WSAA de AFIP')
-        except zeep_exceptions.Fault as error:
-            raise SystemExit(
-                'Código: {} - Mensaje: {}'.format(error.code, error.message))
-
-        # Muestro el mensaje de éxito y no el mensaje propiamente dicho ya que
-        # el mismo no aporta nada al debug
-        if args['debug'] or DEBUG:
-            logging.info('|=================  CMS  =================')
-            logging.info('| Mensaje CMS en Base64 creado exitosamente')
-            logging.info('|=================  ---  =================')
-
-        # Genero el archivo con la respuesta de AFIP
-        with open(ticket, 'w') as file:
-            file.write(response)
+    # Obtengo el path donde está almacenado el ticket
+    ticket_data['path'] = wsaa.get_ticket_path()
 
     # Imprimo la salida luego de parsear el archivo XML
-    print_output(ticket, parse_afip_response(ticket))
+    print_output(ticket_data)
 
 
 if __name__ == '__main__':
