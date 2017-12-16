@@ -27,7 +27,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.5.6"
+__version__ = "0.5.7"
 
 
 # Archivo de configuración
@@ -73,9 +73,6 @@ def get_config_data(args, section):
             value = (args['cuit'] if args['cuit'] else value).replace('-', '')
             if not validation.check_cuit(value):
                 raise ValueError('{}: no es válido'.format(key))
-
-    # Nombre del Web Service al que se le solicitará ticket acceso
-    data['web_service'] = args['web_service']
 
     return data
 

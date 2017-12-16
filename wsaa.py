@@ -52,7 +52,7 @@ from functions import utils
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 
 
 # Directorio donde se guardan los archivos del Web Service
@@ -396,6 +396,8 @@ def main(cli_args):
     # Obtengo los datos de configuración
     try:
         data = utils.get_config_data(args, section=__file__[:-3])
+        # Nombre del Web Service al que se le solicitará ticket acceso
+        data['web_service'] = args['web_service']
     except ValueError as error:
         raise SystemExit(error)
 
