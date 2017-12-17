@@ -28,6 +28,10 @@ import argparse
 import logging
 import sys
 
+from requests import Session
+from zeep import Client
+from zeep.transports import Transport
+
 from config.config import DEBUG
 from functions import utils
 from wsaa import WSAA
@@ -35,7 +39,7 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.1.2'
+__version__ = '0.2.1'
 
 
 class WSSRPADRONA4():
@@ -43,8 +47,38 @@ class WSSRPADRONA4():
     Clase que se usa de interfaz para el Web Service de Consulta a Padrón
     Alcance 4 de AFIP
     """
-    def __init__(self, data):
+    def __init__(self, data, debug):
         self.data = data
+        self.debug = debug
+        self.appserver = self.authserver = self.dbserver = None
+
+    def dummy(self):
+        """
+        Verifica estado y disponibilidad de los elementos principales del
+        servicio de AFIP: aplicación, autenticación y base de datos
+        """
+        # Instancio Session para validar la conexión SSL, de esta manera la
+        # información se mantiene de manera persistente
+        session = Session()
+        # Incluyo el certificado en formato PEM
+        session.verify = self.data['ca_cert']
+
+        # Instancio Transport con la información de sesión y el timeout a
+        # utilizar en la conexión
+        transport = Transport(session=session, timeout=30)
+
+        # Instancio Client con los datos del wsdl de WSAA y de transporte
+        client = Client(wsdl=self.data['wsdl'], transport=transport)
+
+        # XML de respuesta
+        response = client.service.dummy()
+
+        # Establezco los atributos según la respuesta de AFIP
+        self.appserver = response['appserver']
+        self.authserver = response['authserver']
+        self.dbserver = response['dbserver']
+
+        return response
 
 
 def cli_parser(argv=None):
@@ -53,14 +87,13 @@ def cli_parser(argv=None):
     soportados. Si los argumentos mandatorios fueron suministrados
     devuelve el listado completo.
     """
-    # TODO: crear una clase y transferir el contenido a functions/utils
     # TODO: traducir mensajes internos de argparse al español
 
     # Establezco los comandos soportados
-    parser = argparse.ArgumentParser(prog='WS-SR-PADRON-A4')
-    group = parser.add_mutually_exclusive_group()
+    parse_cli = argparse.ArgumentParser(prog='WS-SR-PADRON-A4')
+    group = parse_cli.add_mutually_exclusive_group()
 
-    parser.add_argument(
+    parse_cli.add_argument(
         '--cuit',
         help='define el CUIT que solicita el acceso')
     group.add_argument(
@@ -71,11 +104,11 @@ def cli_parser(argv=None):
         '--production',
         help='solicita el acceso al ambiente de producción',
         action='store_true')
-    parser.add_argument(
+    parse_cli.add_argument(
         '--debug',
         help='envía los mensajes de debug a stderr',
         action='store_true')
-    parser.add_argument(
+    parse_cli.add_argument(
         '--version',
         action='version',
         version='%(prog)s ' + __version__)
@@ -84,11 +117,11 @@ def cli_parser(argv=None):
     argv = argv if __file__ not in argv else argv[1:]
 
     # Parseo la línea de comandos
-    args = parser.parse_args(argv)
+    args = parse_cli.parse_args(argv)
 
     # El cuit es mandatorio y debe ser definido
     if not args.cuit:
-        raise parser.error(
+        raise parse_cli.error(
             'Debe definir el CUIT del que se solicitan los datos')
     else:
         return vars(args)
@@ -117,8 +150,16 @@ def main(cli_args):
     # Obtengo los datos de configuración
     try:
         data = utils.get_config_data(args, section=__file__[:-3])
+        # Nombre del Web Service al que se le solicitará ticket acceso
+        data['web_service'] = __file__[:-3]
     except ValueError as error:
         raise SystemExit(error)
+
+    # Instancio el objeto census
+    census = WSSRPADRONA4(data, debug)
+
+    if args['dummy']:
+        print(census.dummy())
 
 
 if __name__ == '__main__':
