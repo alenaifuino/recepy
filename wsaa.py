@@ -52,7 +52,7 @@ from functions import utils
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.0.2'
+__version__ = '1.0.3'
 
 
 # Directorio donde se guardan los archivos del Web Service
@@ -414,7 +414,7 @@ def main(cli_args):
         logging.info('| Web Service:   %s', data['web_service'])
         logging.info('|=================  ---  =================')
 
-    # Creo el objeto de autenticación y autorización
+    # Instancio WSAA para obtener un objeto de autenticación y autorización
     wsaa = WSAA(data, debug)
 
     # Obtengo la respuesta de AFIP
