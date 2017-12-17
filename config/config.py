@@ -34,10 +34,12 @@ CONFIG = {
         "prod_wsdl": "https://wsaa.afip.gov.ar/ws/services/LoginCms?WSDL"
     },
     "ws_sr_padron_a4": {
+        "ca_cert": "config/certificates/afip_ca.crt",
         "test_wsdl": "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA4?WSDL",
         "prod_wsdl": "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA4?WSDL"
     },
     "wsfe": {
+        "ca_cert": "config/certificates/afip_ca.crt",
         "test_wsdl": "https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL",
         "prod_wsdl": "https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL"
     }
