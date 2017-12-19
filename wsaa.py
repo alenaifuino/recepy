@@ -52,7 +52,7 @@ from functions import utils
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.0.3'
+__version__ = '1.2.1'
 
 
 # Directorio donde se guardan los archivos del Web Service
@@ -262,49 +262,23 @@ def cli_parser(argv=None):
     soportados. Si los argumentos mandatorios fueron suministrados
     devuelve el listado completo.
     """
-    # TODO: traducir mensajes internos de argparse al español
-
-    # Establezco los comandos soportados
-    parse_cli = argparse.ArgumentParser(prog='WSAA')
-
-    parse_cli.add_argument(
-        '--web-service',
-        help='define el Web Service al que se le solicita acceso')
-    parse_cli.add_argument(
-        '--certificate',
-        help='define la ubicación del certificado vinculado al CUIT')
-    parse_cli.add_argument(
-        '--private-key',
-        help='define la ubicación de la clave privada vinculada al CUIT')
-    parse_cli.add_argument(
-        '--passphrase',
-        help='define la frase secreta de la clave privada')
-    parse_cli.add_argument(
-        '--production',
-        help='solicita el acceso al ambiente de producción',
-        action='store_true')
-    parse_cli.add_argument(
-        '--debug',
-        help='envía los mensajes de debug a stderr',
-        action='store_true')
-    parse_cli.add_argument(
-        '--version',
-        action='version',
-        version='%(prog)s ' + __version__)
+    # Creo el parser obtienen del parser base los comandos comunes
+    wsaa_parser = argparse.ArgumentParser(
+        parents=utils.base_parser('WSAA', __version__))
 
     # Elimino el nombre del script del listado de línea de comandos
     argv = argv if __file__ not in argv else argv[1:]
 
     # Parseo la línea de comandos
-    args = parse_cli.parse_args(argv)
+    args = wsaa_parser.parse_args(argv)
 
     # El Web Service es mandatorio y debe ser definido
     if args.web_service is None:
-        raise parse_cli.error(
+        raise wsaa_parser.error(
             'Debe definir el Web Service al que quiere solicitar acceso')
     # Chequeo los Web Services habilitados
     elif args.web_service not in WEB_SERVICES:
-        raise parse_cli.error(
+        raise wsaa_parser.error(
             'Web Service desconocido. Web Services habilitados: {}'.format(
                 WEB_SERVICES))
     else:
@@ -393,11 +367,11 @@ def main(cli_args):
     # Establezco el modo debug
     debug = args['debug'] or DEBUG
 
-    # Obtengo los datos de configuración
     try:
-        data = utils.get_config_data(args, section=__file__[:-3])
         # Nombre del Web Service al que se le solicitará ticket acceso
-        data['web_service'] = args['web_service']
+        web_service = args['web_service']
+        # Obtengo los datos de configuración
+        data = utils.get_config_data(args)
     except ValueError as error:
         raise SystemExit(error)
 
@@ -405,13 +379,14 @@ def main(cli_args):
     if debug:
         logging.basicConfig(stream=sys.stderr, level=logging.INFO)
         logging.info('|============  Configuración  ============')
-        logging.info('| Certificado:   %s', data['certificate'])
-        logging.info('| Clave Privada: %s', data['private_key'])
-        logging.info('| Frase Secreta: %s',
+        logging.info('| Certificado:      %s', data['certificate'])
+        logging.info('| Clave Privada:    %s', data['private_key'])
+        logging.info('| Frase Secreta:    %s',
                      '******' if data['passphrase'] else None)
-        logging.info('| CA AFIP:       %s', data['ca_cert'])
-        logging.info('| WSDL:          %s', data['wsdl'])
-        logging.info('| Web Service:   %s', data['web_service'])
+        logging.info('| CA AFIP:          %s', data['ca_cert'])
+        logging.info('| wsaa WSDL:        %s', data['wsdl'])
+        logging.info('| Web Service:      %s', web_service)
+        logging.info('| Web Service WSDL: %s', data['ws_wsdl'])
         logging.info('|=================  ---  =================')
 
     # Instancio WSAA para obtener un objeto de autenticación y autorización
