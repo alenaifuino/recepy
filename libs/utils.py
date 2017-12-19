@@ -29,7 +29,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.8.2"
+__version__ = "0.8.5"
 
 
 # Archivo de configuración
@@ -45,9 +45,6 @@ def get_config_data(args):
 
     # Defino el WSDL a utilizar
     wsdl = data['mode'] + '_wsdl'
-
-    # Defino el Web Service
-    data['web_service'] = args['web_service']
 
     # Obtengo los datos del archivo de configuración
     for key, value in CONFIG.items():
@@ -75,15 +72,16 @@ def get_config_data(args):
             data[key] = value
         elif key == 'web_service':
             try:
-                wsdl = value[data['web_service']][wsdl]
+                wsdl = value[args['web_service']][wsdl]
             except KeyError:
                 raise ValueError('Sección inexistente en archivo de configuración')
 
             if not isinstance(wsdl, str):
                 raise ValueError(
                     '{}[{}][{}]: no es una cadena de texto'.format(
-                        key, data['web_service'], wsdl))
+                        key, args['web_service'], wsdl))
             data['ws_wsdl'] = wsdl
+            data['web_service'] = args['web_service']
 
     return data
 
@@ -94,6 +92,7 @@ def base_parser(version):
     Parser a ser utilizado como base para cada parser de cada script
     """
     # TODO: traducir mensajes internos de argparse al español
+    # TODO: reimplementar como Clase
 
     # Establezco los comandos soportados
     parser = argparse.ArgumentParser(add_help=False)
@@ -141,6 +140,12 @@ def cli_parser(script, version, argv):
     # Creo el parser a utilizar en el script
     parser = argparse.ArgumentParser(parents=[base])
 
+    # Incluyo los argumentos particulares a cada script
+    if script == 'wssrpadrona4.py':
+        parser.add_argument(
+            '--persona',
+            help='define el CUIT a ser consultado en el padrón AFIP')
+
     # Si recibo el nombre del script en los argumentos, lo elimino
     argv = argv if argv[0] != script else argv[1:]
 
@@ -150,13 +155,21 @@ def cli_parser(script, version, argv):
     # Establezco las validaciones según el script
     if script == 'wsaa.py':
         if args.web_service is None:
-            raise parser.error(
-                'Debe definir el Web Service al que quiere solicitar acceso')
+            raise parser.error('Debe definir el Web Service al que quiere '
+                               'solicitar acceso')
         # Chequeo los Web Services habilitados
         elif args.web_service not in WEB_SERVICES:
-            raise parser.error(
-                'Web Service desconocido. Web Services habilitados: {}'.format(
-                    WEB_SERVICES))
+            raise parser.error('Web Service desconocido. Web Services '
+                               'habilitados: {}'.format(WEB_SERVICES))
+    elif script == 'wssrpadrona4.py':
+        # CUIT y Persona son mandatorios
+        if not args.cuit:
+            raise parser.error('Debe definir el CUIT representado')
+        elif not args.persona:
+            raise parser.error('Debe definir el CUIT del contribuyente a '
+                               'consultar en Padrón AFIP')
+        # Incluyo web_service como argumento
+        args.web_service = script[:-3]
 
     return vars(args)
 
