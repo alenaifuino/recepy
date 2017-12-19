@@ -29,7 +29,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.7.4"
+__version__ = "0.7.5"
 
 
 # Archivo de configuración
@@ -51,11 +51,11 @@ def get_config_data(args, section=None):
                 raise ValueError('{}: no es válido'.format(key))
             data['cuit'] = value
         elif key == data['mode'] + '_cert':
-            value = value if 'certificate' not in args else args['certificate']
+            value = value if not args['certificate'] else args['certificate']
             validation.check_file(value, name=key)
             data['certificate'] = value
         elif key == 'private_key':
-            value = value if 'private_key' not in args else args['private_key']
+            value = value if not args['private_key'] else args['private_key']
             validation.check_file(value, name=key)
             data[key] = value
         elif key == 'passphrase':
@@ -87,7 +87,7 @@ def get_config_data(args, section=None):
 # CLI
 def base_parser(script, version):
     """
-    Parser a ser utilizado como base para los parsers de cada script
+    Parser a ser utilizado como base para cada parser de cada script
     """
     # TODO: traducir mensajes internos de argparse al español
 
