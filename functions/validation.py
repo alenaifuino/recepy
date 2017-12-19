@@ -16,7 +16,7 @@ Módulo con funciones auxiliares para la gestión de validación de input
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.4.1"
+__version__ = "0.4.4"
 
 
 def check_cuit(cuit):
@@ -25,10 +25,14 @@ def check_cuit(cuit):
     Formato válido: xxyyyyyyyyzz
     """
     # Valido la longitud del cuit
-    if len(cuit) != 11:
+    if not cuit:
         return False
+    elif len(cuit) != 11:
+        return False
+    elif len(cuit) == 13:
+        cuit = cuit.replace('-', '', 2)
 
-    # Base de verificación base 10
+    # Verificación en Base10
     base = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2]
 
     # Calculo el dígito verificador
