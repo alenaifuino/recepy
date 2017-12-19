@@ -16,7 +16,7 @@ Módulo de configuración de la aplicación recepy
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.1.2'
+__version__ = '0.1.5'
 
 
 # Activa o desactiva el modo DEBUG
