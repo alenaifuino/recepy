@@ -51,7 +51,7 @@ from libs import utils
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.4.2'
+__version__ = '1.4.3'
 
 
 # Directorio donde se guardan los archivos del Web Service
@@ -75,6 +75,7 @@ class WSAA():
         self.ca_cert = data['ca_cert']
         self.wsdl = data['wsdl']
         self.web_service = data['web_service']
+        self.ws_wsdl = data['ws_wsdl']
         self.debug = debug
         self.token = self.sign = self.expiration_time = None
 
