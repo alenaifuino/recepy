@@ -29,7 +29,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.7.3"
+__version__ = "0.7.4"
 
 
 # Archivo de configuración
@@ -45,10 +45,8 @@ def get_config_data(args, section=None):
 
     # Obtengo los datos del archivo de configuración
     for key, value in CONFIG.items():
-        if key == 'cuit' and not args['dummy']:
-            value = (value
-                     if not args['cuit']
-                     else args['cuit']).replace('-', '')
+        if key == 'cuit':
+            value = value if not args['cuit'] else args['cuit']
             if not validation.check_cuit(value):
                 raise ValueError('{}: no es válido'.format(key))
             data['cuit'] = value
