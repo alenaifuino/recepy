@@ -94,7 +94,7 @@ def base_parser(script, version):
     # TODO: traducir mensajes internos de argparse al español
 
     # Establezco los comandos soportados
-    parser = argparse.ArgumentParser(prog=script)
+    parser = argparse.ArgumentParser(prog=script, add_help=False)
 
     parser.add_argument(
         '--cuit',
