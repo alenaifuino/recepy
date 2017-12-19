@@ -52,7 +52,7 @@ from functions import utils
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.2.1'
+__version__ = '1.2.2'
 
 
 # Directorio donde se guardan los archivos del Web Service
@@ -264,7 +264,7 @@ def cli_parser(argv=None):
     """
     # Creo el parser obtienen del parser base los comandos comunes
     wsaa_parser = argparse.ArgumentParser(
-        parents=utils.base_parser('WSAA', __version__))
+        parents=[utils.base_parser('WSAA', __version__)])
 
     # Elimino el nombre del script del listado de línea de comandos
     argv = argv if __file__ not in argv else argv[1:]
