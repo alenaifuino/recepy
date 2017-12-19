@@ -42,7 +42,7 @@ from lxml import builder, etree
 from requests import exceptions as requests_exceptions
 from requests import Session
 from zeep import exceptions as zeep_exceptions
-from zeep import Client
+from zeep import Client, helpers
 from zeep.transports import Transport
 
 from config.config import DEBUG
@@ -51,7 +51,7 @@ from libs import utils
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.4.3'
+__version__ = '1.5.2'
 
 
 # Directorio donde se guardan los archivos del Web Service
@@ -78,6 +78,47 @@ class WSAA():
         self.ws_wsdl = data['ws_wsdl']
         self.debug = debug
         self.token = self.sign = self.expiration_time = None
+        self.afip_error_status = False
+
+    def __dummy(self):
+        """
+        Verifica estado y disponibilidad de los elementos principales del
+        servicio de AFIP: aplicación, autenticación y base de datos
+        """
+        # Instancio Session para validar la conexión SSL, de esta manera la
+        # información se mantiene de manera persistente
+        session = Session()
+
+        # Incluyo el certificado en formato PEM
+        session.verify = self.ca_cert
+
+        # Instancio Transport con la información de sesión y el timeout a
+        # utilizar en la conexión
+        transport = Transport(session=session, timeout=30)
+
+        # Instancio Client con los datos del wsdl de WSAA y de transporte
+        client = Client(wsdl=self.ws_wsdl, transport=transport)
+
+        # Respuesta de AFIP
+        response = client.service.dummy()
+
+        # Inicializo status
+        server_down = False
+
+        # Obtengo el estado de los servidores de AFIP
+        for value in helpers.serialize_object(response).values():
+            if value != 'OK':
+                server_down = True
+
+        # Si estoy en modo debug imprimo el estado de los servidores
+        if self.debug:
+            logging.info('|===========  Servidores AFIP  ===========')
+            logging.info('| AppServer: ' + response.appserver)
+            logging.info('| AuthServer: ' + response.authserver)
+            logging.info('| DBServer: ' + response.dbserver)
+            logging.info('|=================  ---  =================')
+
+        return server_down
 
     def __create_tra(self):
         """
@@ -117,6 +158,12 @@ class WSAA():
             encoding='UTF-8'
         )
 
+        # Muestro el TRA si estoy en modo debug
+        if self.debug:
+            logging.info('|=================  TRA  =================')
+            logging.info('|\n' + str(tra, 'utf-8').strip('\n'))
+            logging.info('|=================  ---  =================')
+
         # Devuelvo el TRA generado en formato bytes
         return tra
 
@@ -131,7 +178,17 @@ class WSAA():
             '-inkey', self.private_key, '-outform', 'DER', '-nodetach'
             ], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(tra)[0]
 
-        # Devuelvo stdout del output de communicate
+        # Codifico el mensaje CMS en formato Base64
+        cms = b64encode(cms)
+
+        # Muestro el mensaje de éxito y no el mensaje CMS propiamente dicho
+        # ya que el mismo no aporta nada al debug
+        if self.debug:
+            logging.info('|=================  CMS  =================')
+            logging.info('| Mensaje CMS en Base64 creado exitosamente')
+            logging.info('|=================  ---  =================')
+
+        # Devuelvo el CMS
         return cms
 
     def __login_cms(self, cms):
@@ -201,14 +258,12 @@ class WSAA():
 
         # El TRA no existe o no está vigente
         if not self.expiration_time:
+            # Valido que el servicio de AFIP este funcionando
+            if self.__dummy():
+                raise SystemExit('Los servidores de AFIP se encuentran caídos')
+
             # Creo el Ticket de Requerimiento de Acceso (TRA)
             tra = self.__create_tra()
-
-            # Muestro el TRA si estoy en modo debug
-            if self.debug:
-                logging.info('|=================  TRA  =================')
-                logging.info('|\n' + str(tra, 'utf-8').strip('\n'))
-                logging.info('|=================  ---  =================')
 
             # Genero un mensaje CMS del tipo SignedData
             try:
@@ -216,16 +271,6 @@ class WSAA():
             except FileNotFoundError:
                 raise SystemExit('No se pudo generar el mensaje CMS: '
                                  'el ejecutable openssl no está disponible')
-
-            # Codifico el mensaje CMS en formato Base64
-            cms = b64encode(cms)
-
-            # Muestro el mensaje de éxito y no el mensaje CMS propiamente dicho
-            # ya que el mismo no aporta nada al debug
-            if self.debug:
-                logging.info('|=================  CMS  =================')
-                logging.info('| Mensaje CMS en Base64 creado exitosamente')
-                logging.info('|=================  ---  =================')
 
             # Envío el CMS al WSAA de AFIP
             try:
@@ -345,9 +390,7 @@ def main(argv):
     debug = args['debug'] or DEBUG
 
     try:
-        # Nombre del Web Service al que se le solicitará ticket acceso
-        web_service = args['web_service']
-        # Obtengo los datos de configuración si no llamo a dummy
+        # Obtengo los datos de configuración
         data = utils.get_config_data(args)
     except ValueError as error:
         raise SystemExit(error)
@@ -362,7 +405,7 @@ def main(argv):
                      '******' if data['passphrase'] else None)
         logging.info('| CA AFIP:          %s', data['ca_cert'])
         logging.info('| wsaa WSDL:        %s', data['wsdl'])
-        logging.info('| Web Service:      %s', web_service)
+        logging.info('| Web Service:      %s', data['web_service'])
         logging.info('| Web Service WSDL: %s', data['ws_wsdl'])
         logging.info('|=================  ---  =================')
 
