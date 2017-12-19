@@ -24,26 +24,25 @@ DEBUG = False
 
 # Diccionario con los valores de configuración
 CONFIG = {
-    "wsaa": {
-        "test_cert": "config/certificates/testing.crt",
-        "prod_cert": "config/certificates/production.crt",
-        "private_key": "config/certificates/private.key",
-        "passphrase": None,
-        "ca_cert": "config/certificates/afip_ca.crt",
-        "test_wsdl": "https://wsaahomo.afip.gov.ar/ws/services/LoginCms?WSDL",
-        "prod_wsdl": "https://wsaa.afip.gov.ar/ws/services/LoginCms?WSDL"
-    },
-    "ws_sr_padron_a4": {
-        "ca_cert": "config/certificates/afip_ca.crt",
-        "test_wsdl": "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA4?WSDL",
-        "prod_wsdl": "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA4?WSDL"
-    },
-    "wsfe": {
-        "ca_cert": "config/certificates/afip_ca.crt",
-        "test_wsdl": "https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL",
-        "prod_wsdl": "https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL"
+    "cuit": None,
+    "test_cert": "config/certificates/testing.crt",
+    "prod_cert": "config/certificates/production.crt",
+    "private_key": "config/certificates/private.key",
+    "passphrase": None,
+    "ca_cert": "config/certificates/afip_ca.crt",
+    "test_wsdl": "https://wsaahomo.afip.gov.ar/ws/services/LoginCms?WSDL",
+    "prod_wsdl": "https://wsaa.afip.gov.ar/ws/services/LoginCms?WSDL",
+    "web_service": {
+        "ws_sr_padron_a4": {
+            "test_wsdl": "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA4?WSDL",
+            "prod_wsdl": "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA4?WSDL"
+        },
+        "wsfe": {
+            "test_wsdl": "https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL",
+            "prod_wsdl": "https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL"
+        }
     }
 }
 
 # Tupla con los Web Services soportados
-WEB_SERVICES = tuple(key for key in CONFIG if key is not 'wsaa')
+WEB_SERVICES = tuple(ws for ws in CONFIG['web_service'])
