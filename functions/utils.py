@@ -12,9 +12,11 @@
 """
 Módulo con funciones auxiliares para la gestión de:
     - Archivo de configuración
-    - Fecha
+    - CLI
+    - Fechas
 """
 
+import argparse
 from datetime import datetime, timedelta
 from socket import gaierror
 
@@ -27,57 +29,105 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.5.7"
+__version__ = "0.6.1"
 
 
 # Archivo de configuración
-def get_config_data(args, section):
+def get_config_data(args, section=None):
     """
     Obtengo los datos de configuración y devuelvo un diccionario con los mismos
     """
-    # Obtengo los datos del archivo de configuración
-    try:
-        config_data = CONFIG[section]
-    except KeyError:
-        raise ValueError('Sección inexistente en archivo de configuración')
-
     # Diccionario para almacenar los datos de configuración
     data = {}
 
     # Defino el tipo de conexión: testing o production
     data['mode'] = 'test' if not args['production'] else 'prod'
 
-    # Valido los datos de configuración y los guardo en el diccionario data
-    for key, value in config_data.items():
-        # Verifico el archivo de certificado
-        if key == data['mode'] + '_cert':
-            value = args['certificate'] if args['certificate'] else value
+    # Obtengo los datos del archivo de configuración
+    for key, value in CONFIG.items():
+        if key == 'cuit' and not args['dummy']:
+            value = (value
+                     if not args['cuit']
+                     else args['cuit']).replace('-', '')
+            if not validation.check_cuit(value):
+                raise ValueError('{}: no es válido'.format(key))
+            data['cuit'] = value
+        elif key == data['mode'] + '_cert':
+            value = value if 'certificate' not in args else args['certificate']
             validation.check_file(value, name=key)
             data['certificate'] = value
         elif key == 'private_key':
-            value = args['private_key'] if args['private_key'] else value
-            validation.check_file(value, name=key)
-            data[key] = value
-        elif key == 'ca_cert':
+            value = value if 'private_key' not in args else args['private_key']
             validation.check_file(value, name=key)
             data[key] = value
         elif key == 'passphrase':
             if not isinstance(value, str) and value is not None:
                 raise ValueError('{}: no es una cadena de texto'.format(key))
             data[key] = value
+        elif key == 'ca_cert':
+            validation.check_file(value, name=key)
+            data[key] = value
         elif key == data['mode'] + '_wsdl':
             if not isinstance(value, str):
                 raise ValueError('{}: no es una cadena de texto'.format(key))
             data['wsdl'] = value
-        elif key == 'cuit':
-            value = (args['cuit'] if args['cuit'] else value).replace('-', '')
-            if not validation.check_cuit(value):
-                raise ValueError('{}: no es válido'.format(key))
+        elif key == 'web_service' and section:
+            try:
+                wsdl = value[section][data['mode'] + '_wsdl']
+            except KeyError:
+                raise ValueError('Sección inexistente en archivo de configuración')
+
+            if not isinstance(wsdl, str):
+                raise ValueError(
+                    '{}[{}][{}]: no es una cadena de texto'.format(
+                        key, section, data['mode'] + '_wsdl'))
+            data['ws_wsdl'] = wsdl
 
     return data
 
 
-# Fecha
+# CLI
+def base_parser(script, version):
+    """
+    Parser a ser utilizado como base para los parsers de cada script
+    """
+    # TODO: traducir mensajes internos de argparse al español
+
+    # Establezco los comandos soportados
+    parser = argparse.ArgumentParser(prog=script)
+
+    parser.add_argument(
+        '--cuit',
+        help='define el CUIT que solicita el acceso')
+    parser.add_argument(
+        '--certificate',
+        help='define la ubicación del certificado vinculado al CUIT')
+    parser.add_argument(
+        '--private-key',
+        help='define la ubicación de la clave privada vinculada al CUIT')
+    parser.add_argument(
+        '--passphrase',
+        help='define la frase secreta de la clave privada')
+    parser.add_argument(
+        '--web-service',
+        help='define el Web Service al que se le solicita acceso')
+    parser.add_argument(
+        '--production',
+        help='solicita el acceso al ambiente de producción',
+        action='store_true')
+    parser.add_argument(
+        '--debug',
+        help='envía los mensajes de debug a stderr',
+        action='store_true')
+    parser.add_argument(
+        '--version',
+        action='version',
+        version='%(prog)s ' + version)
+
+    return parser
+
+
+# Fechas
 def ntp_time(ntp_server):
     """
     Devuelve timestamp de la fecha y hora obtenida del servidor de tiempo
