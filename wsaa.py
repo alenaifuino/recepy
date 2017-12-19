@@ -29,7 +29,6 @@ http://www.afip.gov.ar/ws/WSAA/Especificacion_Tecnica_WSAA_1.2.2.pdf
 # Basado en wsaa.py de Mariano Reingart <reingart@gmail.com>
 # pyafipws - Sistemas Agiles - versión 2.11c 2017-03-14
 
-import argparse
 import logging
 import os
 import random
@@ -46,13 +45,13 @@ from zeep import exceptions as zeep_exceptions
 from zeep import Client
 from zeep.transports import Transport
 
-from config.config import DEBUG, WEB_SERVICES
-from functions import utils
+from config.config import DEBUG
+from libs import utils
 
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.2.2'
+__version__ = '1.4.2'
 
 
 # Directorio donde se guardan los archivos del Web Service
@@ -69,7 +68,13 @@ class WSAA():
     y Autorización de AFIP
     """
     def __init__(self, data, debug):
-        self.data = data
+        self.mode = data['mode']
+        self.certificate = data['certificate']
+        self.private_key = data['private_key']
+        self.passphrase = data['passphrase']
+        self.ca_cert = data['ca_cert']
+        self.wsdl = data['wsdl']
+        self.web_service = data['web_service']
         self.debug = debug
         self.token = self.sign = self.expiration_time = None
 
@@ -78,7 +83,7 @@ class WSAA():
         Crea un Ticket de Requerimiento de Acceso (TRA)
         """
         # Establezco el tipo de conexión para usar en el tag destination
-        dcn = 'wsaa' if self.data['mode'] == 'prod' else 'wsaahomo'
+        dcn = 'wsaa' if self.mode == 'prod' else 'wsaahomo'
         dest = 'cn=' + dcn + ',o=afip,c=ar,serialNumber=CUIT 33693450239'
 
         # Obtengo la fechahora actual
@@ -103,7 +108,7 @@ class WSAA():
                     builder.E.generationTime(str(generation_time) + timezone),
                     builder.E.expirationTime(str(expiration_time) + timezone),
                 ),
-                builder.E.service(self.data['web_service']),
+                builder.E.service(self.web_service),
                 version='1.0'
             ),
             pretty_print=True,
@@ -121,8 +126,8 @@ class WSAA():
         AFIP
         """
         cms = Popen([
-            'openssl', 'smime', '-sign', '-signer', self.data['certificate'],
-            '-inkey', self.data['private_key'], '-outform', 'DER', '-nodetach'
+            'openssl', 'smime', '-sign', '-signer', self.certificate,
+            '-inkey', self.private_key, '-outform', 'DER', '-nodetach'
             ], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(tra)[0]
 
         # Devuelvo stdout del output de communicate
@@ -137,14 +142,14 @@ class WSAA():
         # información se mantiene de manera persistente
         session = Session()
         # Incluyo el certificado en formato PEM
-        session.verify = self.data['ca_cert']
+        session.verify = self.ca_cert
 
         # Instancio Transport con la información de sesión y el timeout a
         # utilizar en la conexión
         transport = Transport(session=session, timeout=30)
 
         # Instancio Client con los datos del wsdl de WSAA y de transporte
-        client = Client(wsdl=self.data['wsdl'], transport=transport)
+        client = Client(wsdl=self.wsdl, transport=transport)
 
         # XML de respuesta
         response = client.service.loginCms(in0=cms)
@@ -164,7 +169,7 @@ class WSAA():
         os.makedirs(os.path.dirname(OUTPUT_DIR), exist_ok=True)
 
         # Defino el archivo y ruta donde se guardará el ticket
-        return OUTPUT_DIR + TICKET.replace('<ws>', self.data['web_service'])
+        return OUTPUT_DIR + TICKET.replace('<ws>', self.web_service)
 
     def get_ticket(self):
         """
@@ -256,35 +261,6 @@ class WSAA():
         return output
 
 
-def cli_parser(argv=None):
-    """
-    Parsea la línea de comandos buscando argumentos requeridos y
-    soportados. Si los argumentos mandatorios fueron suministrados
-    devuelve el listado completo.
-    """
-    # Creo el parser obtienen del parser base los comandos comunes
-    wsaa_parser = argparse.ArgumentParser(
-        parents=[utils.base_parser('WSAA', __version__)])
-
-    # Elimino el nombre del script del listado de línea de comandos
-    argv = argv if __file__ not in argv else argv[1:]
-
-    # Parseo la línea de comandos
-    args = wsaa_parser.parse_args(argv)
-
-    # El Web Service es mandatorio y debe ser definido
-    if args.web_service is None:
-        raise wsaa_parser.error(
-            'Debe definir el Web Service al que quiere solicitar acceso')
-    # Chequeo los Web Services habilitados
-    elif args.web_service not in WEB_SERVICES:
-        raise wsaa_parser.error(
-            'Web Service desconocido. Web Services habilitados: {}'.format(
-                WEB_SERVICES))
-    else:
-        return vars(args)
-
-
 def valid_tra(ticket_time):
     """
     Verifica si el ticket de acceso está vigente
@@ -357,12 +333,12 @@ def print_output(ticket_data):
         print('{}{}{}'.format(label, spaces, value))
 
 
-def main(cli_args):
+def main(argv):
     """
     Función utilizada para la ejecución del script por línea de comandos
     """
     # Obtengo los parámetros pasados por línea de comandos
-    args = cli_parser(cli_args)
+    args = utils.cli_parser(__file__, __version__, argv)
 
     # Establezco el modo debug
     debug = args['debug'] or DEBUG
@@ -370,7 +346,7 @@ def main(cli_args):
     try:
         # Nombre del Web Service al que se le solicitará ticket acceso
         web_service = args['web_service']
-        # Obtengo los datos de configuración
+        # Obtengo los datos de configuración si no llamo a dummy
         data = utils.get_config_data(args)
     except ValueError as error:
         raise SystemExit(error)
