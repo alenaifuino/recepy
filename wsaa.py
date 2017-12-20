@@ -51,15 +51,15 @@ from libs import utils
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.5.2'
+__version__ = '1.6.1'
 
 
 # Directorio donde se guardan los archivos del Web Service
 OUTPUT_DIR = 'data/wsaa/'
 
-# Nombre del ticket de autorización donde <ws> será reemplazado por el web
+# Nombre del archivo de salida donde <ws> será reemplazado por el web
 # service que esté solicitando el acceso
-TICKET = 'tra_<ws>.xml'
+OUTPUT_FILE = 'tra_<ws>.xml'
 
 
 class WSAA():
@@ -220,7 +220,7 @@ class WSAA():
 
         return response
 
-    def get_ticket_path(self):
+    def get_output_path(self):
         """
         Devuelve el path y archivo donde se almacena el ticket
         """
@@ -228,7 +228,7 @@ class WSAA():
         os.makedirs(os.path.dirname(OUTPUT_DIR), exist_ok=True)
 
         # Defino el archivo y ruta donde se guardará el ticket
-        return OUTPUT_DIR + TICKET.replace('<ws>', self.web_service)
+        return OUTPUT_DIR + OUTPUT_FILE.replace('<ws>', self.web_service)
 
     def get_ticket(self):
         """
@@ -236,7 +236,7 @@ class WSAA():
         solicita uno nuevo al Web Service de AFIP
         """
         # Obtengo el ticket del disco local
-        ticket = self.get_ticket_path()
+        ticket = self.get_output_path()
 
         # Verifico si hay un ticket en disco y obtengo sus datos
         try:
@@ -417,7 +417,7 @@ def main(argv):
     ticket_data = wsaa.get_ticket()
 
     # Obtengo el path donde está almacenado el ticket
-    ticket_data['path'] = wsaa.get_ticket_path()
+    ticket_data['path'] = wsaa.get_output_path()
 
     # Imprimo la salida luego de parsear el archivo XML
     print_output(ticket_data)
