@@ -25,7 +25,10 @@ https://www.afip.gob.ar/ws/ws_sr_padron_a4/manual_ws_sr_padron_a4_v1.1.pdf
 """
 
 import logging
+import os
 import sys
+from datetime import datetime
+from json import dumps
 
 from requests import Session
 from zeep import Client, helpers
@@ -38,7 +41,15 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.3.2'
+__version__ = '0.4.7'
+
+
+# Directorio donde se guardan los archivos del Web Service
+OUTPUT_DIR = 'data/ws_sr_padron_a4/'
+
+# Nombre del archivo JSON donde <persona> será reemplazado por el CUIT del
+# contribuyente consultado al padrón de AFIP
+OUTPUT_FILE = '<persona>.json'
 
 
 class WSSRPADRONA4():
@@ -93,6 +104,16 @@ class WSSRPADRONA4():
 
         return server_down
 
+    def get_output_path(self):
+        """
+        Devuelve el path y archivo donde se almacena el ticket
+        """
+        # Creo el directorio si este no existe
+        os.makedirs(os.path.dirname(OUTPUT_DIR), exist_ok=True)
+
+        # Defino el archivo y ruta donde se guardará el ticket
+        return OUTPUT_DIR + OUTPUT_FILE.replace('<persona>', self.persona)
+
     def get_taxpayer(self, ticket_data):
         """
         Obtiene los datos del CUIT solicitado
@@ -122,7 +143,26 @@ class WSSRPADRONA4():
             cuitRepresentada=self.cuit,
             idPersona=self.persona)
 
-        return response
+        # Serializo el objeto de respuesta de AFIP
+        serialized_dict = helpers.serialize_object(response)
+
+        def convert_datetime(data):
+            """
+            Convierte formato datetime.datetime a isoformat sin microsegundos
+            de manera recursiva para el diccionario provisto
+            """
+            for key, item in data.items():
+                if isinstance(item, dict): # diccionario
+                    convert_datetime(item)
+                elif isinstance(item, list): # lista de diccionarios
+                    for value in item:
+                        convert_datetime(value)
+                elif isinstance(item, datetime):
+                    data[key] = item.replace(microsecond=0).isoformat()
+
+            return data
+
+        return convert_datetime(serialized_dict)
 
 
 def main(argv):
@@ -168,8 +208,15 @@ def main(argv):
     # Obtengo los datos del padrón del contribuyente requerido
     response = census.get_taxpayer(ticket_data)
 
-    # Imprimo la respuesta de AFIP
-    print(response)
+    # Lo transformo a JSON
+    json_response = dumps(response, indent=2, ensure_ascii=False)
+
+    # Genero el archivo con la respuesta de AFIP
+    output = census.get_output_path()
+    with open(output, 'w') as file:
+        file.write(json_response)
+
+    print('Datos Contribuyente en: {}'.format(output))
 
 
 if __name__ == '__main__':
