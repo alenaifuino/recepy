@@ -199,6 +199,7 @@ class WSAA():
         # Instancio Session para validar la conexión SSL, de esta manera la
         # información se mantiene de manera persistente
         session = Session()
+
         # Incluyo el certificado en formato PEM
         session.verify = self.ca_cert
 
