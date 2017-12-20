@@ -141,7 +141,7 @@ def cli_parser(script, version, argv):
     parser = argparse.ArgumentParser(parents=[base])
 
     # Incluyo los argumentos particulares a cada script
-    if script == 'wssrpadrona4.py':
+    if script == 'ws_sr_padron_a4.py':
         parser.add_argument(
             '--persona',
             help='define el CUIT a ser consultado en el padrón AFIP')
@@ -161,7 +161,7 @@ def cli_parser(script, version, argv):
         elif args.web_service not in WEB_SERVICES:
             raise parser.error('Web Service desconocido. Web Services '
                                'habilitados: {}'.format(WEB_SERVICES))
-    elif script == 'wssrpadrona4.py':
+    elif script == 'ws_sr_padron_a4.py':
         # CUIT y Persona son mandatorios
         if not args.cuit:
             raise parser.error('Debe definir el CUIT representado')
