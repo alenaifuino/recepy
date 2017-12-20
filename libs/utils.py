@@ -29,7 +29,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.8.5"
+__version__ = "0.8.6"
 
 
 # Archivo de configuración
@@ -82,6 +82,14 @@ def get_config_data(args):
                         key, args['web_service'], wsdl))
             data['ws_wsdl'] = wsdl
             data['web_service'] = args['web_service']
+
+    # Hago las validaciones de cada Web Service
+    if args['web_service'] == 'ws_sr_padron_a4':
+        # Valido persona
+        if not validation.check_cuit(args['persona']):
+            raise ValueError('La clave "persona" no es válida')
+        else:
+            data['persona'] = args['persona']
 
     return data
 
