@@ -7,7 +7,7 @@
 #
 # This program is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTIBILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# MERCHANTIBILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 # General Public License for more details.
 """
 Módulo con funciones auxiliares para la gestión de validación de input
@@ -22,7 +22,7 @@ __version__ = "0.4.4"
 def check_cuit(cuit):
     """
     Valida la Clave Unica de Identificación Tributaria (CUIT).
-    Formato válido: xxyyyyyyyyzz
+    Formato válido: xxyyyyyyyyz o xx-yyyyyyyy-z
     """
     # Valido la longitud del cuit
     if not cuit:
