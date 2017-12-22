@@ -7,7 +7,7 @@
 #
 # This program is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTIBILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# MERCHANTIBILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 # General Public License for more details.
 """
 Módulo que permite consultar el padrón y obtener los datos de un
@@ -35,7 +35,7 @@ from zeep import Client, helpers
 from zeep.transports import Transport
 
 from config.config import DEBUG
-from libs import utils
+from libs import utility
 from wsaa import WSAA
 
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
@@ -170,7 +170,7 @@ def main(argv):
     Función utilizada para la ejecución del script por línea de comandos
     """
     # Obtengo los parámetros pasados por línea de comandos
-    args = utils.cli_parser(__file__, __version__, argv)
+    args = utility.cli_parser(__file__, __version__, argv)
 
     # Establezco el modo debug
     debug = args['debug'] or DEBUG
@@ -178,7 +178,7 @@ def main(argv):
     # Obtengo los datos de configuración
     try:
         # Obtengo los datos de configuración
-        data = utils.get_config_data(args)
+        data = utility.get_config_data(args)
     except ValueError as error:
         raise SystemExit(error)
 
