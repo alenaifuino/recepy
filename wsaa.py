@@ -46,7 +46,7 @@ from libs import utility, web_service
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.7.3'
+__version__ = '1.7.4'
 
 
 # Directorio donde se guardan los archivos del Web Service
@@ -319,7 +319,7 @@ def main():
 
     # Muestro las opciones de configuración via stderr
     if config_data['debug']:
-        logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+        logging.basicConfig(stream=sys.stdout, level=logging.INFO)
         logging.info('|============  Configuración  ============')
         logging.info('| Certificado:   %s', config_data['certificate'])
         logging.info('| Clave Privada: %s', config_data['private_key'])
