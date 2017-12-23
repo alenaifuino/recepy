@@ -29,7 +29,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.9.2"
+__version__ = "0.9.3"
 
 
 # Archivo de configuración
@@ -56,6 +56,7 @@ def get_config_data(args):
 
     # Actualizo WSDL de autenticación según modo de conexión
     data['wsdl'] = data['wsdl'][mode]
+
     # Actualizo WSDL del Web Service seǵun modo de conexión
     data['ws_wsdl'] = data['ws_wsdl'][data['web_service']]['wsdl'][mode]
 
@@ -150,6 +151,10 @@ def cli_parser(script, version):
         elif not args.persona:
             raise parser.error('Debe definir el CUIT del contribuyente a '
                                'consultar en Padrón AFIP')
+
+    # Actualizo el nombre de web_service
+    if args.web_service is None:
+        args.web_service = script[:-3]
 
     # Incluyo el nombre del script como argumento
     args.script = script
