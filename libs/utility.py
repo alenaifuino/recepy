@@ -22,14 +22,14 @@ from socket import gaierror
 
 from ntplib import NTPClient, NTPException
 
-from config.config import CONFIG, WEB_SERVICES
+from config.config import DEBUG, CONFIG, WEB_SERVICES
 
 from . import validation
 
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.8.6"
+__version__ = "0.9.2"
 
 
 # Archivo de configuración
@@ -37,74 +37,49 @@ def get_config_data(args):
     """
     Obtengo los datos de configuración y devuelvo un diccionario con los mismos
     """
-    # Diccionario para almacenar los datos de configuración
-    data = {}
+    # Hago un merge entre las claves de configuración y los argumentos pasados
+    # Args sobreescribe CONFIG
+    data = {**CONFIG, **args}
 
-    # Defino el tipo de conexión: testing o production
-    data['mode'] = 'test' if not args['production'] else 'prod'
+    # Establezco el modo de conexión
+    mode = 'prod' if data['prod'] else 'test'
 
-    # Defino el WSDL a utilizar
-    wsdl = data['mode'] + '_wsdl'
+    # Corrijo certificado según modo de conexión, clave privada y frase secreta
+    if not data['certificate']:
+        data['certificate'] = CONFIG['certificate'][mode]
 
-    # Obtengo los datos del archivo de configuración
-    for key, value in CONFIG.items():
-        if key == 'cuit':
-            value = value if not args['cuit'] else args['cuit']
-            if not validation.check_cuit(value):
-                raise ValueError('La clave "{}" no es válida'.format(key))
-            data['cuit'] = value
-        elif key == data['mode'] + '_cert':
-            value = value if not args['certificate'] else args['certificate']
-            validation.check_file(value, name=key)
-            data['certificate'] = value
-        elif key == 'private_key':
-            value = value if not args['private_key'] else args['private_key']
-            validation.check_file(value, name=key)
-            data[key] = value
-        elif key == 'passphrase' or key == wsdl:
-            if not isinstance(value, str):
-                raise ValueError(
-                    'La clave "{}" no es una cadena de texto'.format(key))
-            key = 'wsdl' if key.endswith('wsdl') else key
-            data[key] = value
-        elif key == 'ca_cert':
-            validation.check_file(value, name=key)
-            data[key] = value
-        elif key == 'web_service':
-            try:
-                wsdl = value[args['web_service']][wsdl]
-            except KeyError:
-                raise ValueError('Sección inexistente en archivo de configuración')
+    if not data['private_key']:
+        data['private_key'] = CONFIG['private_key']
 
-            if not isinstance(wsdl, str):
-                raise ValueError(
-                    '{}[{}][{}]: no es una cadena de texto'.format(
-                        key, args['web_service'], wsdl))
-            data['ws_wsdl'] = wsdl
-            data['web_service'] = args['web_service']
+    if not data['passphrase']:
+        data['passphrase'] = CONFIG['passphrase']
 
-    # Hago las validaciones de cada Web Service
-    if args['web_service'] == 'ws_sr_padron_a4':
-        # Valido persona
-        if not validation.check_cuit(args['persona']):
-            raise ValueError('La clave "persona" no es válida')
-        else:
-            data['persona'] = args['persona']
+    # Actualizo WSDL de autenticación según modo de conexión
+    data['wsdl'] = data['wsdl'][mode]
+    # Actualizo WSDL del Web Service seǵun modo de conexión
+    data['ws_wsdl'] = data['ws_wsdl'][data['web_service']]['wsdl'][mode]
+
+    # Actualizo debug
+    data['debug'] = data['debug'] or DEBUG
+
+    # Valido los datos del diccionario de configuración
+    validation.check_config(data)
 
     return data
 
 
 # CLI
-def base_parser(version):
+def base_parser(script, version):
     """
     Parser a ser utilizado como base para cada parser de cada script
     """
     # TODO: traducir mensajes internos de argparse al español
     # TODO: reimplementar como Clase
 
-    # Establezco los comandos soportados
+    # Creo el parser de la línea de comandos
     parser = argparse.ArgumentParser(add_help=False)
 
+    # Establezco los comandos soportados
     parser.add_argument(
         '--cuit',
         help='define el CUIT que solicita el acceso')
@@ -116,14 +91,16 @@ def base_parser(version):
         help='define la ubicación de la clave privada vinculada al CUIT')
     parser.add_argument(
         '--passphrase',
-        help='define la frase secreta de la clave privada')
+        help='define la frase secreta de la clave privada',
+        default='')
     parser.add_argument(
         '--web-service',
         help='define el Web Service al que se le solicita acceso')
     parser.add_argument(
-        '--production',
+        '--prod',
         help='solicita el acceso al ambiente de producción',
-        action='store_true')
+        action='store_true',
+        default=False)
     parser.add_argument(
         '--debug',
         help='envía los mensajes de debug a stderr',
@@ -133,32 +110,29 @@ def base_parser(version):
         action='version',
         version='%(prog)s ' + version)
 
+    # Incluyo argumentos específicos por script
+    if script == 'ws_sr_padron_a4.py':
+        parser.add_argument(
+            '--persona',
+            help='define el CUIT a ser consultado en el padrón AFIP')
+
     return parser
 
 
-def cli_parser(script, version, argv):
+def cli_parser(script, version):
     """
     Parsea la línea de comandos buscando argumentos requeridos y
     soportados. Si los argumentos mandatorios fueron suministrados
     devuelve el listado completo.
     """
     # Obtengo el parser base
-    base = base_parser(version)
+    base = base_parser(script, version)
 
     # Creo el parser a utilizar en el script
     parser = argparse.ArgumentParser(parents=[base])
 
-    # Incluyo los argumentos particulares a cada script
-    if script == 'ws_sr_padron_a4.py':
-        parser.add_argument(
-            '--persona',
-            help='define el CUIT a ser consultado en el padrón AFIP')
-
-    # Si recibo el nombre del script en los argumentos, lo elimino
-    argv = argv if argv[0] != script else argv[1:]
-
     # Parseo la línea de comandos
-    args = parser.parse_args(argv)
+    args = parser.parse_args()
 
     # Establezco las validaciones según el script
     if script == 'wsaa.py':
@@ -176,8 +150,9 @@ def cli_parser(script, version, argv):
         elif not args.persona:
             raise parser.error('Debe definir el CUIT del contribuyente a '
                                'consultar en Padrón AFIP')
-        # Incluyo web_service como argumento
-        args.web_service = script[:-3]
+
+    # Incluyo el nombre del script como argumento
+    args.script = script
 
     return vars(args)
 
