@@ -25,23 +25,19 @@ https://www.afip.gob.ar/ws/ws_sr_padron_a4/manual_ws_sr_padron_a4_v1.1.pdf
 """
 
 import logging
-import os
 import sys
 from datetime import datetime
 from json import dumps
 
-from requests import Session
-from zeep import Client, helpers
-from zeep.transports import Transport
+from zeep import helpers
 
-from config.config import DEBUG
-from libs import utility
+from libs import utility, web_service
 from wsaa import WSAA
 
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.4.7'
+__version__ = '0.5.4'
 
 
 # Directorio donde se guardan los archivos del Web Service
@@ -49,99 +45,35 @@ OUTPUT_DIR = 'data/ws_sr_padron_a4/'
 
 # Nombre del archivo JSON donde <persona> será reemplazado por el CUIT del
 # contribuyente consultado al padrón de AFIP
-OUTPUT_FILE = '<persona>.json'
+OUTPUT_FILE = '<string>.json'
 
 
-class WSSRPADRONA4():
+class WSSRPADRONA4(web_service.BaseWebService):
     """
     Clase que se usa de interfaz para el Web Service de Consulta a Padrón
     Alcance 4 de AFIP
     """
-    def __init__(self, data, debug):
-        self.cuit = data['cuit']
-        self.ca_cert = data['ca_cert']
-        self.ws_wsdl = data['ws_wsdl']
-        self.persona = data['persona']
-        self.debug = debug
-
-    def __dummy(self):
-        """
-        Verifica estado y disponibilidad de los elementos principales del
-        servicio de AFIP: aplicación, autenticación y base de datos
-        """
-        # Instancio Session para validar la conexión SSL, de esta manera la
-        # información se mantiene de manera persistente
-        session = Session()
-
-        # Incluyo el certificado en formato PEM
-        session.verify = self.ca_cert
-
-        # Instancio Transport con la información de sesión y el timeout a
-        # utilizar en la conexión
-        transport = Transport(session=session, timeout=30)
-
-        # Instancio Client con los datos del wsdl de WSAA y de transporte
-        client = Client(wsdl=self.ws_wsdl, transport=transport)
-
-        # Respuesta de AFIP
-        response = client.service.dummy()
-
-        # Inicializo status
-        server_down = False
-
-        # Obtengo el estado de los servidores de AFIP
-        for value in helpers.serialize_object(response).values():
-            if value != 'OK':
-                server_down = True
-
-        # Si estoy en modo debug imprimo el estado de los servidores
-        if self.debug:
-            logging.info('|===========  Servidores AFIP  ===========')
-            logging.info('| AppServer: ' + response.appserver)
-            logging.info('| AuthServer: ' + response.authserver)
-            logging.info('| DBServer: ' + response.dbserver)
-            logging.info('|=================  ---  =================')
-
-        return server_down
-
-    def get_output_path(self):
-        """
-        Devuelve el path y archivo donde se almacena el ticket
-        """
-        # Creo el directorio si este no existe
-        os.makedirs(os.path.dirname(OUTPUT_DIR), exist_ok=True)
-
-        # Defino el archivo y ruta donde se guardará el ticket
-        return OUTPUT_DIR + OUTPUT_FILE.replace('<persona>', self.persona)
+    def __init__(self, config):
+        self.config = config
+        super().__init__(self.config, OUTPUT_DIR, OUTPUT_FILE)
 
     def get_taxpayer(self, ticket_data):
         """
         Obtiene los datos del CUIT solicitado
         """
         # Valido que el servicio de AFIP este funcionando
-        if self.__dummy():
+        if self.dummy():
             raise SystemExit('Los servidores de AFIP se encuentran caídos')
 
-        # Instancio Session para validar la conexión SSL, de esta manera la
-        # información se mantiene de manera persistente
-        session = Session()
-
-        # Incluyo el certificado en formato PEM
-        session.verify = self.ca_cert
-
-        # Instancio Transport con la información de sesión y el timeout a
-        # utilizar en la conexión
-        transport = Transport(session=session, timeout=30)
-
-        # Instancio Client con los datos del wsdl de WSAA y de transporte
-        client = Client(wsdl=self.ws_wsdl, transport=transport)
+        # Instancio Client con los datos del wsdl del Web Service
+        client = self.soap_login(self.config['ws_wsdl'])
 
         # Respuesta de AFIP
         response = client.service.getPersona(
             token=ticket_data['token'],
             sign=ticket_data['sign'],
-            cuitRepresentada=self.cuit,
-            idPersona=self.persona)
+            cuitRepresentada=self.config['cuit'],
+            idPersona=self.config['persona'])
 
         # Serializo el objeto de respuesta de AFIP
         serialized_dict = helpers.serialize_object(response)
@@ -165,42 +97,39 @@ class WSSRPADRONA4():
         return convert_datetime(serialized_dict)
 
 
-def main(argv):
+def main():
     """
     Función utilizada para la ejecución del script por línea de comandos
     """
     # Obtengo los parámetros pasados por línea de comandos
-    args = utility.cli_parser(__file__, __version__, argv)
-
-    # Establezco el modo debug
-    debug = args['debug'] or DEBUG
+    args = utility.cli_parser(__file__, __version__)
 
     # Obtengo los datos de configuración
     try:
         # Obtengo los datos de configuración
-        data = utility.get_config_data(args)
+        config_data = utility.get_config_data(args)
     except ValueError as error:
         raise SystemExit(error)
 
     # Muestro las opciones de configuración via stderr
-    if debug:
-        logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+    if config_data['debug']:
+        logging.basicConfig(stream=sys.stdout, level=logging.INFO)
         logging.info('|============  Configuración  ============')
-        logging.info('| Certificado:      %s', data['certificate'])
-        logging.info('| Clave Privada:    %s', data['private_key'])
-        logging.info('| Frase Secreta:    %s',
-                     '******' if data['passphrase'] else None)
-        logging.info('| CA AFIP:          %s', data['ca_cert'])
-        logging.info('| wsaa WSDL:        %s', data['wsdl'])
-        logging.info('| Web Service:      %s', data['web_service'])
-        logging.info('| Web Service WSDL: %s', data['ws_wsdl'])
+        logging.info('| Certificado:   %s', config_data['certificate'])
+        logging.info('| Clave Privada: %s', config_data['private_key'])
+        logging.info('| Frase Secreta: %s',
+                     '******' if config_data['passphrase'] else None)
+        logging.info('| CA AFIP:       %s', config_data['ca_cert'])
+        logging.info('| WSAA WSDL:     %s', config_data['wsdl'])
+        logging.info('| WS:            %s', config_data['web_service'])
+        logging.info('| WS WSDL:       %s', config_data['ws_wsdl'])
         logging.info('|=================  ---  =================')
 
     # Instancio WSSRPADRONA4 para obtener un objeto de padrón AFIP
-    census = WSSRPADRONA4(data, debug)
+    census = WSSRPADRONA4(config_data)
 
     # Instancio WSAA para obtener un objeto de autenticación y autorización
-    wsaa = WSAA(data, debug)
+    wsaa = WSAA(config_data)
 
     # Obtengo la respuesta de AFIP
     ticket_data = wsaa.get_ticket()
@@ -212,7 +141,7 @@ def main(argv):
     json_response = dumps(response, indent=2, ensure_ascii=False)
 
     # Genero el archivo con la respuesta de AFIP
-    output = census.get_output_path()
+    output = census.get_output_path(name=config_data['persona'])
     with open(output, 'w') as file:
         file.write(json_response)
 
@@ -220,4 +149,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    main(sys.argv)
+    main()
