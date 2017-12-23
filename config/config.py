@@ -16,7 +16,7 @@ Módulo de configuración de la aplicación recepy
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.1.6'
+__version__ = '0.3.2'
 
 
 # Activa o desactiva el modo DEBUG
@@ -25,24 +25,32 @@ DEBUG = False
 # Diccionario con los valores de configuración
 CONFIG = {
     "cuit": "",
-    "test_cert": "config/certificates/testing.crt",
-    "prod_cert": "config/certificates/production.crt",
+    "certificate": {
+        "test": "config/certificates/testing.crt",
+        "prod": "config/certificates/production.crt"
+    },
     "private_key": "config/certificates/private.key",
     "passphrase": "",
     "ca_cert": "config/certificates/afip_ca.crt",
-    "test_wsdl": "https://wsaahomo.afip.gov.ar/ws/services/LoginCms?WSDL",
-    "prod_wsdl": "https://wsaa.afip.gov.ar/ws/services/LoginCms?WSDL",
-    "web_service": {
+    "wsdl": {
+        "test": "https://wsaahomo.afip.gov.ar/ws/services/LoginCms?WSDL",
+        "prod": "https://wsaa.afip.gov.ar/ws/services/LoginCms?WSDL",
+    },
+    "ws_wsdl": {
         "ws_sr_padron_a4": {
-            "test_wsdl": "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA4?WSDL",
-            "prod_wsdl": "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA4?WSDL"
+            "wsdl": {
+                "test": "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA4?WSDL",
+                "prod": "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA4?WSDL"
+            }
         },
         "wsfe": {
-            "test_wsdl": "https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL",
-            "prod_wsdl": "https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL"
+            "wsdl": {
+                "test": "https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL",
+                "prod": "https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL"
+            }
         }
     }
 }
 
 # Tupla con los Web Services soportados
-WEB_SERVICES = tuple(ws for ws in CONFIG['web_service'])
+WEB_SERVICES = tuple(ws for ws in CONFIG['ws_wsdl'])
