@@ -16,7 +16,7 @@ Módulo con funciones auxiliares para la gestión de validación de input
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.4.4"
+__version__ = "0.5.4"
 
 
 def check_cuit(cuit):
@@ -62,3 +62,44 @@ def check_file(file, *, name, permission='r'):
             '{}: no tiene los permisos requeridos'.format(name))
 
     return True
+
+
+def check_config(data):
+    """
+    Valida los datos de configuración
+    """
+    from urllib.parse import urlparse
+
+    # Valida el CUIT
+    if not check_cuit(data['cuit']):
+        raise ValueError('La clave "cuit" no es válida')
+
+    # Valida el Certificado
+    check_file(data['certificate'], name='certificate')
+
+    # Valida la Clave Privada
+    check_file(data['private_key'], name='private_key')
+
+    # Valida la Frase Secreta
+    if data['passphrase']:
+        if not isinstance(data['passphrase'], str):
+            raise ValueError('La clave "passphrase" no es una cadena de texto')
+
+    # Valida el Certificado CA
+    check_file(data['ca_cert'], name='ca_cert')
+
+    # Valida los WSDL
+    for wsdl in ['wsdl', 'ws_wsdl']:
+        parsed = urlparse(data[wsdl])
+        if not parsed.scheme or not parsed.netloc:
+            raise ValueError('La clave "{}" no es válida'.format(wsdl))
+
+    # Valida debug
+    if not isinstance(data['debug'], bool):
+        raise ValueError('El modo debug no es válido')
+
+    # Hago las validaciones de cada Web Service
+    if data['script'] == 'ws_sr_padron_a4.py':
+        # Valido persona
+        if not check_cuit(data['persona']):
+            raise ValueError('La clave "persona" no es válida')
