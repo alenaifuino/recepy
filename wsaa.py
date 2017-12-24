@@ -46,15 +46,7 @@ from libs import utility, web_service
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.7.4'
-
-
-# Directorio donde se guardan los archivos del Web Service
-OUTPUT_DIR = 'data/wsaa/'
-
-# Nombre del archivo de salida donde <strins> será reemplazado por el web
-# service que esté solicitando el acceso
-OUTPUT_FILE = 'tra_<string>.xml'
+__version__ = '1.7.6'
 
 
 class WSAA(web_service.BaseWebService):
@@ -65,7 +57,7 @@ class WSAA(web_service.BaseWebService):
 
     def __init__(self, config):
         self.config = config
-        super().__init__(self.config, OUTPUT_DIR, OUTPUT_FILE)
+        super().__init__(self.config, 'ta.xml')
         self.token = self.sign = self.expiration_time = None
 
     def __create_tra(self):
