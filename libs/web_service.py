@@ -20,10 +20,12 @@ from requests import Session
 from zeep import Client, helpers
 from zeep.transports import Transport
 
+from config.config import OUTPUT_DIR
+
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.0.0'
+__version__ = '1.0.2'
 
 
 class BaseWebService():
@@ -31,9 +33,9 @@ class BaseWebService():
     Clase que se usa como base para los web services particulares de
     acceso al sistema Web Service SOAP de AFIP
     """
-    def __init__(self, config, out_dir, out_file):
+    def __init__(self, config, out_file):
         self.config = config
-        self.out_dir = out_dir
+        self.out_dir = OUTPUT_DIR + config['web_service'] + '/'
         self.out_file = out_file
 
     def soap_login(self, wsdl, timeout=30):
