@@ -16,7 +16,7 @@ Módulo de configuración de la aplicación recepy
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.3.2'
+__version__ = '0.6.1'
 
 
 # Activa o desactiva el modo DEBUG
@@ -38,19 +38,22 @@ CONFIG = {
     },
     "ws_wsdl": {
         "ws_sr_padron_a4": {
-            "wsdl": {
-                "test": "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA4?WSDL",
-                "prod": "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA4?WSDL"
-            }
+            "test": "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA4?WSDL",
+            "prod": "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA4?WSDL"
+        },
+        "ws_sr_padron_a5": {
+            "test": "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5?WSDL",
+            "prod": "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5?WSDL"
         },
         "wsfe": {
-            "wsdl": {
-                "test": "https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL",
-                "prod": "https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL"
-            }
+            "test": "https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL",
+            "prod": "https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL"
         }
     }
 }
 
 # Tupla con los Web Services soportados
 WEB_SERVICES = tuple(ws for ws in CONFIG['ws_wsdl'])
+
+# Directorio donde se guardan los archivos del Web Service
+OUTPUT_DIR = 'data/'
