@@ -29,7 +29,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.9.3"
+__version__ = "1.0.7"
 
 
 # Archivo de configuración
@@ -58,7 +58,7 @@ def get_config_data(args):
     data['wsdl'] = data['wsdl'][mode]
 
     # Actualizo WSDL del Web Service seǵun modo de conexión
-    data['ws_wsdl'] = data['ws_wsdl'][data['web_service']]['wsdl'][mode]
+    data['ws_wsdl'] = data['ws_wsdl'][data['web_service']][mode]
 
     # Actualizo debug
     data['debug'] = data['debug'] or DEBUG
@@ -112,10 +112,15 @@ def base_parser(script, version):
         version='%(prog)s ' + version)
 
     # Incluyo argumentos específicos por script
-    if script == 'ws_sr_padron_a4.py':
+    if script == 'ws_sr_padron.py':
         parser.add_argument(
             '--persona',
             help='define el CUIT a ser consultado en el padrón AFIP')
+        parser.add_argument(
+            '--alcance',
+            help='define el Padrón de AFIP a consultar',
+            type=int,
+            default=4)
 
     return parser
 
@@ -144,15 +149,17 @@ def cli_parser(script, version):
         elif args.web_service not in WEB_SERVICES:
             raise parser.error('Web Service desconocido. Web Services '
                                'habilitados: {}'.format(WEB_SERVICES))
-    elif script == 'ws_sr_padron_a4.py':
-        # CUIT y Persona son mandatorios
-        if not args.cuit:
-            raise parser.error('Debe definir el CUIT representado')
-        elif not args.persona:
+    elif script == 'ws_sr_padron.py':
+        # Persona y Alcance son mandatorios
+        if not args.persona:
             raise parser.error('Debe definir el CUIT del contribuyente a '
                                'consultar en Padrón AFIP')
+        elif not args.alcance:
+            raise parser.error('Debe definir el Padrón a consultar')
+        # Establezco el nombre del web service correspondiente al alcance
+        args.web_service = script[:-3] + '_a' + str(args.alcance)
 
-    # Actualizo el nombre de web_service
+    # Actualizo el nombre del Web Service si no está definido
     if args.web_service is None:
         args.web_service = script[:-3]
 

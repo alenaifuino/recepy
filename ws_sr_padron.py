@@ -11,17 +11,21 @@
 # General Public License for more details.
 """
 Módulo que permite consultar el padrón y obtener los datos de un
-contribuyente a través del Web Service de Consulta a Padrón Alcance 4
-(WS_SR_PADRON_A4) de AFIP
+contribuyente a través del Web Service de Consulta a Padrón:
+    - Alcance 4 (WS_SR_PADRON_A4) de AFIP
+    - Alcance 5 (WS_SR_PADRON_A5) de AFIP
 
 Las operaciones que se realizan en este módulo son:
-    - dummy: verificación de estado y disponibilidad de los elemento
+    - dummy: verificación de estado y disponibilidad de los elementos
              del servicio
     - getPersona: detalle de todos los datos existentes en el padrón
                   único de contribuyentes del contribuyente solicitado
 
-Especificación Técnica v1.1 en:
+WS_SR_PADRON_A4 - Especificación Técnica v1.1 en:
 https://www.afip.gob.ar/ws/ws_sr_padron_a4/manual_ws_sr_padron_a4_v1.1.pdf
+
+WS_SR_PADRON_A5 - Especificación Técnica v1.0 en:
+https://www.afip.gob.ar/ws/ws_sr_padron_a5/manual_ws_sr_padron_a5_v1.0.pdf
 """
 
 import logging
@@ -37,25 +41,18 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.5.4'
+__version__ = '0.6.1'
 
 
-# Directorio donde se guardan los archivos del Web Service
-OUTPUT_DIR = 'data/ws_sr_padron_a4/'
-
-# Nombre del archivo JSON donde <persona> será reemplazado por el CUIT del
-# contribuyente consultado al padrón de AFIP
-OUTPUT_FILE = '<string>.json'
-
-
-class WSSRPADRONA4(web_service.BaseWebService):
+class WSSRPADRON(web_service.BaseWebService):
     """
-    Clase que se usa de interfaz para el Web Service de Consulta a Padrón
-    Alcance 4 de AFIP
+    Clase que se usa de interfaz para el Web Service de Consulta a Padrón AFIP:
+        - Alcance 4
+        - Alcance 5
     """
     def __init__(self, config):
         self.config = config
-        super().__init__(self.config, OUTPUT_DIR, OUTPUT_FILE)
+        super().__init__(self.config, '<string>.json')
 
     def get_taxpayer(self, ticket_data):
         """
@@ -84,11 +81,14 @@ class WSSRPADRONA4(web_service.BaseWebService):
             de manera recursiva para el diccionario provisto
             """
             for key, item in data.items():
-                if isinstance(item, dict): # diccionario
+                # Si es un diccionario vuelvo a llamar a la función
+                if isinstance(item, dict):
                     convert_datetime(item)
-                elif isinstance(item, list): # lista de diccionarios
+                # Si es una lista vuelvo a llamar a la función
+                elif isinstance(item, list):
                     for value in item:
-                        convert_datetime(value)
+                        if isinstance(value, (dict, list)):
+                            convert_datetime(value)
                 elif isinstance(item, datetime):
                     data[key] = item.replace(microsecond=0).isoformat()
 
@@ -126,7 +126,7 @@ def main():
         logging.info('|=================  ---  =================')
 
     # Instancio WSSRPADRONA4 para obtener un objeto de padrón AFIP
-    census = WSSRPADRONA4(config_data)
+    census = WSSRPADRON(config_data)
 
     # Instancio WSAA para obtener un objeto de autenticación y autorización
     wsaa = WSAA(config_data)

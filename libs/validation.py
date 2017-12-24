@@ -16,7 +16,7 @@ Módulo con funciones auxiliares para la gestión de validación de input
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.5.4"
+__version__ = "0.6.1"
 
 
 def check_cuit(cuit):
@@ -99,7 +99,7 @@ def check_config(data):
         raise ValueError('El modo debug no es válido')
 
     # Hago las validaciones de cada Web Service
-    if data['script'] == 'ws_sr_padron_a4.py':
+    if data['script'] == 'ws_sr_padron.py':
         # Valido persona
         if not check_cuit(data['persona']):
             raise ValueError('La clave "persona" no es válida')
