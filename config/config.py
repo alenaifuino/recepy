@@ -45,6 +45,14 @@ CONFIG = {
             "test": "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5?WSDL",
             "prod": "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5?WSDL"
         },
+        "ws_sr_padron_a10": {
+            "test": "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA10?WSDL",
+            "prod": "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA10?WSDL"
+        },
+        "ws_sr_padron_a100": {
+            "test": "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA100?WSDL",
+            "prod": "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA100?WSDL"
+        },
         "wsfe": {
             "test": "https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL",
             "prod": "https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL"
