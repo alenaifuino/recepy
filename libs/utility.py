@@ -14,22 +14,24 @@ Módulo con funciones auxiliares para la gestión de:
     - Archivo de configuración
     - CLI
     - Fechas
+    - Diccionarios
 """
 
 import argparse
+import collections.abc
 from datetime import datetime, timedelta
 from socket import gaierror
 
 from ntplib import NTPClient, NTPException
 
-from config.config import DEBUG, CONFIG, WEB_SERVICES
+from config.config import CONFIG, DEBUG, WEB_SERVICES
 
 from . import validation
 
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.0.7"
+__version__ = "1.1.1"
 
 
 # Archivo de configuración
@@ -191,7 +193,7 @@ def ntp_time(ntp_server):
         timestamp = None
 
     # Si no obtuve respuesta del ntp_server o hubo una excepción, recorro la
-    # tupla hasta que obtengo la primer respuesta
+    # tupla ntp_server_tuple hasta que obtengo la primer respuesta
     if not timestamp:
         for server in ntp_server_tuple:
             try:
@@ -246,6 +248,14 @@ def timestamp_to_datetime(timestamp, *, microsecond=0):
     return datetime.fromtimestamp(timestamp).replace(microsecond=microsecond)
 
 
+def datetime_to_string(datetime_obj):
+    """
+    Convierte formato datetime.datetime a isoformat sin microsegundos
+    """
+    if isinstance(datetime_obj, datetime):
+        return datetime_obj.replace(microsecond=0).isoformat()
+
+
 def get_datetime(source='afip.time.gob.ar'):
     """
     Devuelve la fecha en formato datetime según el servidor de tiempo (AFIP
@@ -259,3 +269,21 @@ def get_datetime(source='afip.time.gob.ar'):
         timestamp = datetime.now().timestamp()
 
     return timestamp_to_datetime(timestamp) if timestamp else None
+
+
+# Diccionarios
+def map_nested_dicts(data, function, data_type):
+    """
+    Recorre un diccionario data y aplica function en objeto del tipo data_type
+    """
+    for key, item in data.items():
+        if isinstance(item, collections.abc.Mapping):
+            map_nested_dicts(item, function, data_type)
+        elif isinstance(item, list):
+            for value in item:
+                if isinstance(value, collections.abc.Mapping):
+                    map_nested_dicts(value, function, data_type)
+                elif isinstance(value, data_type):
+                    data[key] = function(value)
+        elif isinstance(item, data_type):
+            data[key] = function(item)

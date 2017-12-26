@@ -41,7 +41,7 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.6.1'
+__version__ = '0.7.2'
 
 
 class WSSRPADRON(web_service.BaseWebService):
@@ -73,28 +73,21 @@ class WSSRPADRON(web_service.BaseWebService):
             idPersona=self.config['persona'])
 
         # Serializo el objeto de respuesta de AFIP
-        serialized_dict = helpers.serialize_object(response)
+        response_dict = helpers.serialize_object(response)
 
-        def convert_datetime(data):
-            """
-            Convierte formato datetime.datetime a isoformat sin microsegundos
-            de manera recursiva para el diccionario provisto
-            """
-            for key, item in data.items():
-                # Si es un diccionario vuelvo a llamar a la función
-                if isinstance(item, dict):
-                    convert_datetime(item)
-                # Si es una lista vuelvo a llamar a la función
-                elif isinstance(item, list):
-                    for value in item:
-                        if isinstance(value, (dict, list)):
-                            convert_datetime(value)
-                elif isinstance(item, datetime):
-                    data[key] = item.replace(microsecond=0).isoformat()
+        # Recorro y modifico el diccionario para los items del tipo datetime
+        utility.map_nested_dicts(
+            response_dict, utility.datetime_to_string, datetime)
 
-            return data
+        # Lo transformo a JSON
+        json_response = dumps(response_dict, indent=2, ensure_ascii=False)
 
-        return convert_datetime(serialized_dict)
+        # Genero el archivo con la respuesta de AFIP
+        output = self.get_output_path(name=self.config['persona'])
+        with open(output, 'w') as file:
+            file.write(json_response)
+
+        return json_response
 
 
 def main():
@@ -135,17 +128,11 @@ def main():
     ticket_data = wsaa.get_ticket()
 
     # Obtengo los datos del padrón del contribuyente requerido
-    response = census.get_taxpayer(ticket_data)
+    census.get_taxpayer(ticket_data)
 
-    # Lo transformo a JSON
-    json_response = dumps(response, indent=2, ensure_ascii=False)
-
-    # Genero el archivo con la respuesta de AFIP
-    output = census.get_output_path(name=config_data['persona'])
-    with open(output, 'w') as file:
-        file.write(json_response)
-
-    print('Datos Contribuyente en: {}'.format(output))
+    # Imprimo la salida JSON
+    print('Datos Contribuyente en: {}'.format(census.get_output_path(
+        name=config_data['persona'])))
 
 
 if __name__ == '__main__':
