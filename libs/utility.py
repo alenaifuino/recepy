@@ -31,7 +31,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.1.1"
+__version__ = "1.1.3"
 
 
 # Archivo de configuración
@@ -142,28 +142,24 @@ def cli_parser(script, version):
     # Parseo la línea de comandos
     args = parser.parse_args()
 
-    # Establezco las validaciones según el script
-    if script == 'wsaa.py':
-        if args.web_service is None:
-            raise parser.error('Debe definir el Web Service al que quiere '
-                               'solicitar acceso')
-        # Chequeo los Web Services habilitados
-        elif args.web_service not in WEB_SERVICES:
-            raise parser.error('Web Service desconocido. Web Services '
-                               'habilitados: {}'.format(WEB_SERVICES))
-    elif script == 'ws_sr_padron.py':
-        # Persona y Alcance son mandatorios
+    # Establezco los chequeos de la línea de comando según el script
+    if script == 'ws_sr_padron.py': # persona y alcance son mandatorios
         if not args.persona:
             raise parser.error('Debe definir el CUIT del contribuyente a '
                                'consultar en Padrón AFIP')
         elif not args.alcance:
             raise parser.error('Debe definir el Padrón a consultar')
-        # Establezco el nombre del web service correspondiente al alcance
+
+        # Establezco el nombre del web service según el alcance
         args.web_service = script[:-3] + '_a' + str(args.alcance)
 
-    # Actualizo el nombre del Web Service si no está definido
-    if args.web_service is None:
-        args.web_service = script[:-3]
+    # Establezco los chequos estándar de la línea de comandos
+    if not args.web_service:
+        raise parser.error('Debe definir el Web Service al que quiere '
+                           'solicitar acceso')
+    elif args.web_service not in WEB_SERVICES:
+        raise parser.error('Web Service desconocido. Web Services '
+                           'habilitados: {}'.format(WEB_SERVICES))
 
     # Incluyo el nombre del script como argumento
     args.script = script
