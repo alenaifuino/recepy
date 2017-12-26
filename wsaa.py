@@ -143,7 +143,7 @@ class WSAA(web_service.BaseWebService):
         # XML de respuesta
         response = client.service.loginCms(in0=cms)
 
-        # Almaceno los atributos
+        # Establezco atributos
         self.token = parse_afip_response(response)['token']
         self.sign = parse_afip_response(response)['sign']
         self.expiration_time = parse_afip_response(response)['expiration_time']
