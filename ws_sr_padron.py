@@ -51,7 +51,7 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.8.8'
+__version__ = '0.8.9'
 
 
 class WSSRPADRON(web_service.BaseWebService):
@@ -66,9 +66,9 @@ class WSSRPADRON(web_service.BaseWebService):
         self.config = config
         super().__init__(self.config, '<string>.json')
 
-    def get_census_data(self, name, ticket_data):
+    def get_census_data(self, option, ticket_data):
         """
-        Método genérico que obtiene el método solicitado en name
+        Método genérico que obtiene el método solicitado en option
         """
         # Valido que el servicio de AFIP este funcionando
         if self.dummy():
@@ -84,13 +84,16 @@ class WSSRPADRON(web_service.BaseWebService):
             'cuitRepresentada': self.config['cuit']
         }
 
+        # Defino los parámetros y el método según la opción suministrada
+        if option == 'taxpayer':
+            params['idPersona'] = self.config[option]
+            service_name = 'getPersona'
+        elif option == 'table':
+            params['collectionName'] = self.config[option]
+            service_name = 'getParameterCollectionByName'
+
         # Obtengo la respuesta de AFIP según el tipo de método
-        if name == 'taxpayer':
-            params['idPersona'] = self.config[name]
-            response = client.service.getPersona(**params)
-        elif name == 'table':
-            params['collectionName'] = self.config[name]
-            response = client.service.getParameterCollectionByName(**params)
+        response = getattr(client.service, service_name)(**params)
 
         # Serializo el objeto de respuesta de AFIP
         response_dict = helpers.serialize_object(response)
@@ -103,7 +106,7 @@ class WSSRPADRON(web_service.BaseWebService):
         json_response = dumps(response_dict, indent=2, ensure_ascii=False)
 
         # Genero el archivo con la respuesta de AFIP
-        output = self.get_output_path(name=self.config[name])
+        output = self.get_output_path(name=self.config[option])
         with open(output, 'w') as file:
             file.write(json_response)
 
@@ -148,14 +151,14 @@ def main():
     ticket_data = wsaa.get_ticket()
 
     # Defino el método de conexión
-    method = 'table' if config_data['scope'] == 100 else 'taxpayer'
+    option = 'table' if config_data['scope'] == 100 else 'taxpayer'
 
     # Obtengo los datos solicitados
-    census.get_census_data(method, ticket_data)
+    census.get_census_data(option, ticket_data)
 
     # Imprimo la ubicación del archivo de salida
     print('Respuesta AFIP en: {}'.format(
-        census.get_output_path(name=config_data[method])))
+        census.get_output_path(name=config_data[option])))
 
 
 if __name__ == '__main__':
