@@ -24,14 +24,14 @@ from socket import gaierror
 
 from ntplib import NTPClient, NTPException
 
-from config.config import CONFIG, DEBUG, WEB_SERVICES
+from config.config import CONFIG, DEBUG, WEB_SERVICES, A100_COLLECTIONS
 
 from . import validation
 
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.1.3"
+__version__ = "1.1.4"
 
 
 # Archivo de configuración
@@ -101,7 +101,8 @@ def base_parser(script, version):
         default='')
     parser.add_argument(
         '--web-service',
-        help='define el Web Service al que se le solicita acceso')
+        help='define el Web Service al que se le solicita acceso',
+        choices=WEB_SERVICES)
     parser.add_argument(
         '--prod',
         help='solicita el acceso al ambiente de producción',
@@ -128,7 +129,8 @@ def base_parser(script, version):
             help='define el CUIT a ser consultado en el padrón AFIP')
         group.add_argument(
             '--tabla',
-            help='define la tabla a ser consultada en el padrón AFIP')
+            help='define la tabla a ser consultada en el padrón AFIP',
+            choices=A100_COLLECTIONS)
 
     return parser
 
