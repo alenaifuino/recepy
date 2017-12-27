@@ -31,7 +31,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.1.6"
+__version__ = "1.1.7"
 
 
 # Archivo de configuración
@@ -82,9 +82,6 @@ def base_parser(script, version):
     # Creo el parser de la línea de comandos
     parser = argparse.ArgumentParser(add_help=False)
 
-    # Creo el grupo de comandos mutuamente exclusivos
-    group = parser.add_mutually_exclusive_group()
-
     # Establezco los comandos soportados
     parser.add_argument(
         '--cuit',
@@ -119,17 +116,20 @@ def base_parser(script, version):
 
     # Incluyo argumentos específicos por script
     if script == 'ws_sr_padron.py':
+        # Creo el grupo de comandos mutuamente exclusivos
+        padron = parser.add_mutually_exclusive_group()
+
         parser.add_argument(
             '--alcance',
             help='define el Padrón de AFIP a consultar',
             type=int,
             default=4,
             dest='scope')
-        group.add_argument(
+        padron.add_argument(
             '--persona',
             help='define el CUIT a ser consultado en el padrón AFIP',
             dest='taxpayer')
-        group.add_argument(
+        padron.add_argument(
             '--tabla',
             help='define la tabla a ser consultada en el padrón AFIP',
             choices=A100_COLLECTIONS,
