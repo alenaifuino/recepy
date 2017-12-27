@@ -51,7 +51,7 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.7.2'
+__version__ = '0.8.6'
 
 
 class WSSRPADRON(web_service.BaseWebService):
@@ -59,14 +59,16 @@ class WSSRPADRON(web_service.BaseWebService):
     Clase que se usa de interfaz para el Web Service de Consulta a Padrón AFIP:
         - Alcance 4
         - Alcance 5
+        - Alcance 10
+        - Alcance 100
     """
     def __init__(self, config):
         self.config = config
         super().__init__(self.config, '<string>.json')
 
-    def get_taxpayer(self, ticket_data):
+    def get_census_data(self, name, ticket_data):
         """
-        Obtiene los datos del CUIT solicitado
+        Método genérico que obtiene el método solicitado en name
         """
         # Valido que el servicio de AFIP este funcionando
         if self.dummy():
@@ -75,12 +77,20 @@ class WSSRPADRON(web_service.BaseWebService):
         # Instancio Client con los datos del wsdl del Web Service
         client = self.soap_login(self.config['ws_wsdl'])
 
-        # Respuesta de AFIP
-        response = client.service.getPersona(
-            token=ticket_data['token'],
-            sign=ticket_data['sign'],
-            cuitRepresentada=self.config['cuit'],
-            idPersona=self.config['persona'])
+        # Defino los parámetros comunes de los web services padron de AFIP
+        params = {
+            'token': ticket_data['token'],
+            'sign': ticket_data['sign'],
+            'cuitRepresentada': self.config['cuit']
+        }
+
+        # Obtengo la respuesta de AFIP según el tipo de método
+        if name == 'persona':
+            params['idPersona'] = self.config[name]
+            response = client.service.getPersona(**params)
+        elif name == 'tabla':
+            params['collectionName'] = self.config[name]
+            response = client.service.getParameterCollectionByName(**params)
 
         # Serializo el objeto de respuesta de AFIP
         response_dict = helpers.serialize_object(response)
@@ -93,42 +103,7 @@ class WSSRPADRON(web_service.BaseWebService):
         json_response = dumps(response_dict, indent=2, ensure_ascii=False)
 
         # Genero el archivo con la respuesta de AFIP
-        output = self.get_output_path(name=self.config['persona'])
-        with open(output, 'w') as file:
-            file.write(json_response)
-
-        return json_response
-
-    def get_collection_name(self, ticket_data):
-        """
-        Obtiene los registros de la tabla de parámetros solicitada
-        """
-        # Valido que el servicio de AFIP este funcionando
-        if self.dummy():
-            raise SystemExit('Los servidores de AFIP se encuentran caídos')
-
-        # Instancio Client con los datos del wsdl del Web Service
-        client = self.soap_login(self.config['ws_wsdl'])
-
-        # Respuesta de AFIP
-        response = client.service.getParameterCollectionByName(
-            token=ticket_data['token'],
-            sign=ticket_data['sign'],
-            cuitRepresentada=self.config['cuit'],
-            collectionName=self.config['tabla'])
-
-        # Serializo el objeto de respuesta de AFIP
-        response_dict = helpers.serialize_object(response)
-
-        # Recorro y modifico el diccionario para los items del tipo datetime
-        utility.map_nested_dicts(
-            response_dict, utility.datetime_to_string, datetime)
-
-        # Lo transformo a JSON
-        json_response = dumps(response_dict, indent=2, ensure_ascii=False)
-
-        # Genero el archivo con la respuesta de AFIP
-        output = self.get_output_path(name=self.config['tabla'])
+        output = self.get_output_path(name=self.config[name])
         with open(output, 'w') as file:
             file.write(json_response)
 
@@ -172,16 +147,15 @@ def main():
     # Obtengo la respuesta de AFIP
     ticket_data = wsaa.get_ticket()
 
-    # Obtengo los datos del padrón del contribuyente requerido
-    if config_data['alcance'] != 100:
-        census.get_taxpayer(ticket_data)
-        file_location = census.get_output_path(name=config_data['persona'])
-    else:
-        census.get_collection_name(ticket_data)
-        file_location = census.get_output_path(name=config_data['tabla'])
+    # Defino el método de conexión
+    method = 'tabla' if config_data['alcance'] == 100 else 'persona'
+
+    # Obtengo los datos solicitados
+    census.get_census_data(method, ticket_data)
 
     # Imprimo la ubicación del archivo de salida
-    print('Datos Contribuyente en: {}'.format(file_location))
+    print('Respuesta AFIP en: {}'.format(
+        census.get_output_path(name=config_data[method])))
 
 
 if __name__ == '__main__':
