@@ -25,7 +25,7 @@ from config.config import OUTPUT_DIR
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.0.4'
+__version__ = '1.1.1'
 
 
 class BaseWebService():
@@ -56,7 +56,7 @@ class BaseWebService():
         # Instancio Client con los datos del wsdl y de transporte
         return Client(wsdl=wsdl, transport=transport)
 
-    def dummy(self):
+    def dummy(self, service_name='dummy'):
         """
         Verifica estado y disponibilidad de los elementos principales del
         servicio de AFIP: aplicación, autenticación y base de datos
@@ -65,7 +65,7 @@ class BaseWebService():
         client = self.soap_login(self.config['ws_wsdl'])
 
         # Respuesta de AFIP
-        response = client.service.dummy()
+        response = getattr(client.service, service_name)()
 
         # Inicializo status
         server_down = False
