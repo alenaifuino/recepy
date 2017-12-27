@@ -31,7 +31,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.1.7"
+__version__ = "1.1.8"
 
 
 # Archivo de configuración
@@ -134,6 +134,13 @@ def base_parser(script, version):
             help='define la tabla a ser consultada en el padrón AFIP',
             choices=A100_COLLECTIONS,
             dest='table')
+    elif script == 'wsfe.py':
+        parser.add_argument(
+            '--tipo',
+            help='define el tipo de comprobante a solicitar',
+            default='CAE',
+            choices=['CAE', 'CAEA'],
+            dest='type')
 
     return parser
 
