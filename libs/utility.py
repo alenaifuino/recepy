@@ -31,7 +31,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.1.4"
+__version__ = "1.1.5"
 
 
 # Archivo de configuración
@@ -170,9 +170,6 @@ def cli_parser(script, version):
     if not args.web_service:
         raise parser.error('Debe definir el Web Service al que quiere '
                            'solicitar acceso')
-    elif args.web_service not in WEB_SERVICES:
-        raise parser.error('Web Service desconocido. Web Services '
-                           'habilitados: {}'.format(WEB_SERVICES))
 
     # Incluyo el nombre del script como argumento
     args.script = script
