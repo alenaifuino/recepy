@@ -12,20 +12,30 @@
 """
 Módulo que permite consultar el padrón y obtener los datos de un
 contribuyente a través del Web Service de Consulta a Padrón:
-    - Alcance 4 (WS_SR_PADRON_A4) de AFIP
-    - Alcance 5 (WS_SR_PADRON_A5) de AFIP
+    - Alcance   4 (WS_SR_PADRON_A4)   de AFIP
+    - Alcance   5 (WS_SR_PADRON_A5)   de AFIP
+    - Alcance  10 (WS_SR_PADRON_A10)  de AFIP
+    - Alcance 100 (WS_SR_PADRON_A100) de AFIP
 
 Las operaciones que se realizan en este módulo son:
     - dummy: verificación de estado y disponibilidad de los elementos
-             del servicio
+        del servicio
     - getPersona: detalle de todos los datos existentes en el padrón
-                  único de contribuyentes del contribuyente solicitado
+        único de contribuyentes del contribuyente solicitado
+    - getParameterCollectionByName: devuelve todos los registros de la
+        tabla de parámetros solicitada
 
 WS_SR_PADRON_A4 - Especificación Técnica v1.1 en:
 https://www.afip.gob.ar/ws/ws_sr_padron_a4/manual_ws_sr_padron_a4_v1.1.pdf
 
 WS_SR_PADRON_A5 - Especificación Técnica v1.0 en:
 https://www.afip.gob.ar/ws/ws_sr_padron_a5/manual_ws_sr_padron_a5_v1.0.pdf
+
+WS_SR_PADRON_A10 - Especificación Técnica v1.1 en:
+http://www.afip.gov.ar/ws/ws_sr_padron_a10/manual_ws_sr_padron_a10_v1.1.pdf
+
+WS_SR_PADRON_A100 - Especificación Técnica v1.1 en:
+http://www.afip.gov.ar/ws/ws_sr_padron_a100/manual_ws_sr_padron_a100_v1.1.pdf
 """
 
 import logging
@@ -89,6 +99,41 @@ class WSSRPADRON(web_service.BaseWebService):
 
         return json_response
 
+    def get_collection_name(self, ticket_data):
+        """
+        Obtiene los registros de la tabla de parámetros solicitada
+        """
+        # Valido que el servicio de AFIP este funcionando
+        if self.dummy():
+            raise SystemExit('Los servidores de AFIP se encuentran caídos')
+
+        # Instancio Client con los datos del wsdl del Web Service
+        client = self.soap_login(self.config['ws_wsdl'])
+
+        # Respuesta de AFIP
+        response = client.service.getParameterCollectionByName(
+            token=ticket_data['token'],
+            sign=ticket_data['sign'],
+            cuitRepresentada=self.config['cuit'],
+            collectionName=self.config['tabla'])
+
+        # Serializo el objeto de respuesta de AFIP
+        response_dict = helpers.serialize_object(response)
+
+        # Recorro y modifico el diccionario para los items del tipo datetime
+        utility.map_nested_dicts(
+            response_dict, utility.datetime_to_string, datetime)
+
+        # Lo transformo a JSON
+        json_response = dumps(response_dict, indent=2, ensure_ascii=False)
+
+        # Genero el archivo con la respuesta de AFIP
+        output = self.get_output_path(name=self.config['tabla'])
+        with open(output, 'w') as file:
+            file.write(json_response)
+
+        return json_response
+
 
 def main():
     """
@@ -128,11 +173,15 @@ def main():
     ticket_data = wsaa.get_ticket()
 
     # Obtengo los datos del padrón del contribuyente requerido
-    census.get_taxpayer(ticket_data)
+    if config_data['alcance'] != 100:
+        census.get_taxpayer(ticket_data)
+        file_location = census.get_output_path(name=config_data['persona'])
+    else:
+        census.get_collection_name(ticket_data)
+        file_location = census.get_output_path(name=config_data['tabla'])
 
-    # Imprimo la salida JSON
-    print('Datos Contribuyente en: {}'.format(census.get_output_path(
-        name=config_data['persona'])))
+    # Imprimo la ubicación del archivo de salida
+    print('Datos Contribuyente en: {}'.format(file_location))
 
 
 if __name__ == '__main__':

@@ -50,8 +50,8 @@ CONFIG = {
             "prod": "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA10?WSDL"
         },
         "ws_sr_padron_a100": {
-            "test": "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA100?WSDL",
-            "prod": "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA100?WSDL"
+            "test": "https://awshomo.afip.gov.ar/sr-parametros/webservices/parameterServiceA100?WSDL",
+            "prod": "https://aws.afip.gov.ar/sr-parametros/webservices/parameterServiceA100?WSDL"
         },
         "wsfe": {
             "test": "https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL",
@@ -65,3 +65,19 @@ WEB_SERVICES = tuple(ws for ws in CONFIG['ws_wsdl'])
 
 # Directorio donde se guardan los archivos del Web Service
 OUTPUT_DIR = 'data/'
+
+# Tablas del web service WS_SR_PADRON_A100
+A100_COLLECTIONS = (
+    'SUPA.E_ORGANISMO_INFORMANTE',
+    'SUPA.TIPO_EMPRESA_JURIDICA',
+    'SUPA.E_PROVINCIA',
+    'SUPA.TIPO_DATO_ADICIONAL_DOMICILIO',
+    'PUC_PARAM.T_TIPO_LINEA_TELEFONICA',
+    'SUPA.TIPO_TELEFONO',
+    'SUPA.TIPO_COMPONENTE_SOCIEDAD',
+    'SUPA.TIPO_EMAIL',
+    'SUPA.TIPO_DOMICILIO',
+    'SUPA.E_ACTIVIDAD',
+    'PUC_PARAM.T_CALLE',
+    'PUC_PARAM.T_LOCALIDAD',
+)

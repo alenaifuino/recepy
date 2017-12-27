@@ -82,6 +82,9 @@ def base_parser(script, version):
     # Creo el parser de la línea de comandos
     parser = argparse.ArgumentParser(add_help=False)
 
+    # Creo el grupo de comandos mutuamente exclusivos
+    group = parser.add_mutually_exclusive_group()
+
     # Establezco los comandos soportados
     parser.add_argument(
         '--cuit',
@@ -116,13 +119,16 @@ def base_parser(script, version):
     # Incluyo argumentos específicos por script
     if script == 'ws_sr_padron.py':
         parser.add_argument(
-            '--persona',
-            help='define el CUIT a ser consultado en el padrón AFIP')
-        parser.add_argument(
             '--alcance',
             help='define el Padrón de AFIP a consultar',
             type=int,
             default=4)
+        group.add_argument(
+            '--persona',
+            help='define el CUIT a ser consultado en el padrón AFIP')
+        group.add_argument(
+            '--tabla',
+            help='define la tabla a ser consultada en el padrón AFIP')
 
     return parser
 
@@ -143,17 +149,22 @@ def cli_parser(script, version):
     args = parser.parse_args()
 
     # Establezco los chequeos de la línea de comando según el script
-    if script == 'ws_sr_padron.py': # persona y alcance son mandatorios
-        if not args.persona:
-            raise parser.error('Debe definir el CUIT del contribuyente a '
-                               'consultar en Padrón AFIP')
-        elif not args.alcance:
-            raise parser.error('Debe definir el Padrón a consultar')
+    if script == 'ws_sr_padron.py':
+        if not args.alcance:
+            raise parser.error('Debe definir el Padrón AFIP a consultar')
+        elif args.tabla and not args.alcance == 100:
+            raise parser.error('La opción --tabla sólo es válida con '
+                               '--alcance 100')
+        elif not args.tabla and args.alcance == 100:
+            raise parser.error('Debe definir la tabla a consultar')
+        elif not args.persona and args.alcance != 100:
+            raise parser.error('La opción --persona debe definir el CUIT del '
+                               'contribuyente a consultar en el Padrón AFIP')
 
         # Establezco el nombre del web service según el alcance
         args.web_service = script[:-3] + '_a' + str(args.alcance)
 
-    # Establezco los chequos estándar de la línea de comandos
+    # Establezco los chequeos estándar de la línea de comandos
     if not args.web_service:
         raise parser.error('Debe definir el Web Service al que quiere '
                            'solicitar acceso')

@@ -101,5 +101,6 @@ def check_config(data):
     # Hago las validaciones de cada Web Service
     if data['script'] == 'ws_sr_padron.py':
         # Valido persona
-        if not check_cuit(data['persona']):
-            raise ValueError('La clave "persona" no es válida')
+        if data['alcance'] != 100:
+            if not check_cuit(data['persona']):
+                raise ValueError('La clave "persona" no es válida')
