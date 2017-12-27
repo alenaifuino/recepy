@@ -25,7 +25,7 @@ from config.config import OUTPUT_DIR
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.0.2'
+__version__ = '1.0.4'
 
 
 class BaseWebService():
@@ -35,7 +35,7 @@ class BaseWebService():
     """
     def __init__(self, config, out_file):
         self.config = config
-        self.out_dir = OUTPUT_DIR + config['web_service'] + '/'
+        self.out_dir = OUTPUT_DIR + config['web_service']
         self.out_file = out_file
 
     def soap_login(self, wsdl, timeout=30):
@@ -93,4 +93,4 @@ class BaseWebService():
         os.makedirs(os.path.dirname(self.out_dir), exist_ok=True)
 
         # Defino el archivo y ruta donde se guardará el ticket
-        return self.out_dir + self.out_file.replace(string, name)
+        return os.path.join(self.out_dir, self.out_file.replace(string, name))
