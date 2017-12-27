@@ -51,7 +51,7 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.8.7'
+__version__ = '0.8.8'
 
 
 class WSSRPADRON(web_service.BaseWebService):
@@ -85,10 +85,10 @@ class WSSRPADRON(web_service.BaseWebService):
         }
 
         # Obtengo la respuesta de AFIP según el tipo de método
-        if name == 'persona':
+        if name == 'taxpayer':
             params['idPersona'] = self.config[name]
             response = client.service.getPersona(**params)
-        elif name == 'tabla':
+        elif name == 'table':
             params['collectionName'] = self.config[name]
             response = client.service.getParameterCollectionByName(**params)
 
@@ -148,7 +148,7 @@ def main():
     ticket_data = wsaa.get_ticket()
 
     # Defino el método de conexión
-    method = 'tabla' if config_data['alcance'] == 100 else 'persona'
+    method = 'table' if config_data['scope'] == 100 else 'taxpayer'
 
     # Obtengo los datos solicitados
     census.get_census_data(method, ticket_data)

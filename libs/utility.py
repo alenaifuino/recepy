@@ -31,7 +31,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.1.5"
+__version__ = "1.1.6"
 
 
 # Archivo de configuración
@@ -123,14 +123,17 @@ def base_parser(script, version):
             '--alcance',
             help='define el Padrón de AFIP a consultar',
             type=int,
-            default=4)
+            default=4,
+            dest='scope')
         group.add_argument(
             '--persona',
-            help='define el CUIT a ser consultado en el padrón AFIP')
+            help='define el CUIT a ser consultado en el padrón AFIP',
+            dest='taxpayer')
         group.add_argument(
             '--tabla',
             help='define la tabla a ser consultada en el padrón AFIP',
-            choices=A100_COLLECTIONS)
+            choices=A100_COLLECTIONS,
+            dest='table')
 
     return parser
 
@@ -152,19 +155,19 @@ def cli_parser(script, version):
 
     # Establezco los chequeos de la línea de comando según el script
     if script == 'ws_sr_padron.py':
-        if not args.alcance:
+        if not args.scope:
             raise parser.error('Debe definir el Padrón AFIP a consultar')
-        elif args.tabla and not args.alcance == 100:
+        elif args.table and not args.scope == 100:
             raise parser.error('La opción --tabla sólo es válida con '
                                '--alcance 100')
-        elif not args.tabla and args.alcance == 100:
+        elif not args.table and args.scope == 100:
             raise parser.error('Debe definir la tabla a consultar')
-        elif not args.persona and args.alcance != 100:
+        elif not args.taxpayer and args.scope != 100:
             raise parser.error('La opción --persona debe definir el CUIT del '
                                'contribuyente a consultar en el Padrón AFIP')
 
         # Establezco el nombre del web service según el alcance
-        args.web_service = script[:-3] + '_a' + str(args.alcance)
+        args.web_service = script[:-3] + '_a' + str(args.scope)
 
     # Establezco los chequeos estándar de la línea de comandos
     if not args.web_service:

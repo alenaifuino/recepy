@@ -16,7 +16,7 @@ Módulo con funciones auxiliares para la gestión de validación de input
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.6.1"
+__version__ = "0.6.2"
 
 
 def check_cuit(cuit):
@@ -101,6 +101,6 @@ def check_config(data):
     # Hago las validaciones de cada Web Service
     if data['script'] == 'ws_sr_padron.py':
         # Valido persona
-        if data['alcance'] != 100:
-            if not check_cuit(data['persona']):
+        if data['scope'] != 100:
+            if not check_cuit(data['taxpayer']):
                 raise ValueError('La clave "persona" no es válida')
