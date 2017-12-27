@@ -51,7 +51,7 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.8.6'
+__version__ = '0.8.7'
 
 
 class WSSRPADRON(web_service.BaseWebService):
@@ -138,7 +138,7 @@ def main():
         logging.info('| WS WSDL:       %s', config_data['ws_wsdl'])
         logging.info('|=================  ---  =================')
 
-    # Instancio WSSRPADRONA4 para obtener un objeto de padrón AFIP
+    # Instancio WSSRPADRON para obtener un objeto de padrón AFIP
     census = WSSRPADRON(config_data)
 
     # Instancio WSAA para obtener un objeto de autenticación y autorización
