@@ -25,7 +25,7 @@ from config.config import OUTPUT_DIR
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.1.1'
+__version__ = '1.2.2'
 
 
 class BaseWebService():
@@ -38,9 +38,10 @@ class BaseWebService():
         self.out_dir = OUTPUT_DIR + config['web_service']
         self.out_file = out_file
 
-    def soap_login(self, wsdl, timeout=30):
+    def soap_connect(self, wsdl, name, parameters=None, timeout=30):
         """
-        Conecta al Web Service SOAP de AFIP y obtiene un cliente
+        Conecta al Web Service SOAP de AFIP requerido con los parámetros
+        suministrados
         """
         # Instancio Session para validar la conexión SSL, de esta manera la
         # información se mantiene de manera persistente
@@ -54,23 +55,23 @@ class BaseWebService():
         transport = Transport(session=session, timeout=timeout)
 
         # Instancio Client con los datos del wsdl y de transporte
-        return Client(wsdl=wsdl, transport=transport)
+        client = Client(wsdl=wsdl, transport=transport)
+
+        # Obtengo la respuesta de AFIP según el tipo de método
+        response = getattr(client.service, name)(**parameters)
+
+        # Serializo y devuelvo la respuesta de AFIP
+        return helpers.serialize_object(response)
 
     def dummy(self, service_name='dummy'):
         """
         Verifica estado y disponibilidad de los elementos principales del
         servicio de AFIP: aplicación, autenticación y base de datos
         """
-        # Instancio Client con los datos del wsdl de WSAA y de transporte
-        client = self.soap_login(self.config['ws_wsdl'])
+        # Obtengo la respuesta de AFIP
+        response = self.soap_connect(self.config['ws_wsdl'], service_name)
 
-        # Respuesta de AFIP
-        response = getattr(client.service, service_name)()
-
-        # Serializo la respuesta de AFIP
-        response = helpers.serialize_object(response)
-
-        # Obtengo un diccionario con el estado de cada componente
+        # Armo un diccionario con el estado de cada componente
         status = {key.lower(): value for (key, value) in response.items()}
 
         # Si estoy en modo debug imprimo el estado de los servidores

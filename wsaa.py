@@ -46,7 +46,7 @@ from libs import utility, web_service
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.7.6'
+__version__ = '1.7.7'
 
 
 class WSAA(web_service.BaseWebService):
@@ -137,11 +137,11 @@ class WSAA(web_service.BaseWebService):
         Conecta al Web Service SOAP de AFIP y obtiene respuesta en base al CMS
         que se envía
         """
-        # Instancio Client con los datos del wsdl de WSAA y de transporte
-        client = self.soap_login(self.config['wsdl'])
+        # Diccionario donde defino los parámetros de loginCms
+        params = {'in0': cms}
 
         # XML de respuesta
-        response = client.service.loginCms(in0=cms)
+        response = self.soap_connect(self.config['wsdl'], 'loginCms', params)
 
         # Establezco atributos
         self.token = parse_afip_response(response)['token']
