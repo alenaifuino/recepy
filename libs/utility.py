@@ -31,7 +31,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.1.8"
+__version__ = "1.1.9"
 
 
 # Archivo de configuración
@@ -175,6 +175,9 @@ def cli_parser(script, version):
 
         # Establezco el nombre del web service según el alcance
         args.web_service = script[:-3] + '_a' + str(args.scope)
+    elif script == 'wsfe.py':
+        # Establezco el nombre del web service
+        args.web_service = script[:-3]
 
     # Establezco los chequeos estándar de la línea de comandos
     if not args.web_service:
