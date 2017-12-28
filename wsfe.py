@@ -85,6 +85,147 @@ class WSFE(web_service.BaseWebService):
         self.config = config
         super().__init__(self.config, '<string>.json')
 
+    def request_fe(self, req_type, ticket_data):
+        """
+        Método genérico que realiza la solicitud según el req_type definido
+        """
+        # Valido que el servicio de AFIP este funcionando
+        if self.dummy('FEDummy'):
+            raise SystemExit('El servicio de AFIP no se encuentra disponible')
+
+        # Instancio Client con los datos del wsdl del Web Service
+        client = self.soap_login(self.config['ws_wsdl'])
+
+        # Formateo el tipo de requerimiento
+        req_type = req_type.upper()
+
+        # Establezco el nombre del servicio que será llamado
+        service_name = 'FE' + req_type + 'Solicitar'
+
+        # Defino los parámetros de autenticación
+        params = {
+            'Auth': {
+                'Token': ticket_data['token'],
+                'Sign': ticket_data['sign'],
+                'Cuit': self.config['cuit']
+            }
+        }
+
+        # Defino los parámetros adicionales según el tipo de requerimiento
+        if req_type == 'CAE':
+            extra = {
+                'FeCAEReq': {
+                    'FeCabReq': {
+                        'CantReg': '',
+                        'PtoVta': '',
+                        'CbteTipo': '',
+                    },
+                    'FeDetReq': {
+                        'FECAEDetRequest': {
+                            'Concepto': '',
+                            'DocTipo': '',
+                            'DocNro': '',
+                            'CbteDesde': '',
+                            'CbteHasta': '',
+                            'CbteFch': '',
+                            'ImpTotal': '',
+                            'ImpTotConc': '',
+                            'ImpNeto': '',
+                            'ImpOpEx': '',
+                            'ImpTrib': '',
+                            'ImpIVA': '',
+                            'FchServDesde': '',
+                            'FchServHasta': '',
+                            'FchVtoPago': '',
+                            'MonId': '',
+                            'MonCotiz': '',
+                            'CbtesAsoc': {
+                                'CbteAsoc': {
+                                    'Tipo': '',
+                                    'PtoVta': '',
+                                    'Nro': ''
+                                }
+                            },
+                            'Tributos': {
+                                'Tributo': {
+                                    'Id': '',
+                                    'Desc': '',
+                                    'BaseImp': '',
+                                    'Alic': '',
+                                    'Importe': '',
+                                }
+                            },
+                            'Iva': {
+                                'AlicIva': {
+                                    'Id': '',
+                                    'BaseImp': '',
+                                    'Importe': '',
+                                }
+                            },
+                            'Opcionales': {
+                                'Opcional': {
+                                    'Id': '',
+                                    'Valor': '',
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        elif req_type == 'CAEA':
+            extra = {
+                'Periodo': '',
+                'Orden': ''
+            }
+
+        # Actualizo el diccionario de parámetros
+        params.update(extra)
+
+    def request_param(self, service_name, ticket_data, **kwargs):
+        """
+        Método genérico que realiza la solicitud al método de AFIP definido
+        según service_name
+        """
+        SERVICE_NAMES = (
+            'FEParamGetTiposCbte',
+            'FEParamGetTiposConcepto',
+            'FEParamGetTiposDoc',
+            'FEParamGetTiposIva',
+            'FEParamGetTiposMonedas',
+            'FEParamGetTiposOpcional',
+            'FEParamGetTiposTributos',
+            'FEParamGetPtosVenta',
+            'FEParamGetCotizacion'
+        )
+
+        # Valido el nombre del método solicitado
+        if service_name not in SERVICE_NAMES:
+            raise SystemExit('El método no está soportado por el Web Service')
+
+        # Valido que el servicio de AFIP esté funcionando
+        if self.dummy('FEDummy'):
+            raise SystemExit('El servicio de AFIP no se encuentra disponible')
+
+        # Instancio Client con los datos del wsdl del Web Service
+        client = self.soap_login(self.config['ws_wsdl'])
+
+        # Defino los parámetros de autenticación
+        params = {
+            'Auth': {
+                'Token': ticket_data['token'],
+                'Sign': ticket_data['sign'],
+                'Cuit': self.config['cuit']
+            }
+        }
+
+        # Agrego los parámetros adicionales según el método solicitado
+        if service_name == 'FEParamGetCotizacion':
+            if 'MonId' not in kwargs.keys():
+                raise ValueError('El método FEParamGetCotizacion requiere '
+                                 'la presencia del parámetro "MonId"')
+            else:
+                params.update({'MonId': kwargs['MonId']})
+
 
 def main():
     """
@@ -123,12 +264,9 @@ def main():
     # Obtengo la respuesta de AFIP
     ticket_data = wsaa.get_ticket()
 
-    # Obtengo los datos solicitados
-    voucher.dummy('FEDummy')
-
     # Imprimo la ubicación del archivo de salida
     print('Respuesta AFIP en: {}'.format(
-        voucher.get_output_path(name=config_data['web_service']))
+        voucher.get_output_path(name=config_data['web_service'])))
 
 
 if __name__ == '__main__':
