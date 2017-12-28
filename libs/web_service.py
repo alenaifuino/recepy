@@ -67,23 +67,26 @@ class BaseWebService():
         # Respuesta de AFIP
         response = getattr(client.service, service_name)()
 
-        # Inicializo status
-        server_down = False
+        # Serializo la respuesta de AFIP
+        response = helpers.serialize_object(response)
 
-        # Obtengo el estado de los servidores de AFIP
-        for value in helpers.serialize_object(response).values():
-            if value != 'OK':
-                server_down = True
+        # Obtengo un diccionario con el estado de cada componente
+        status = {key.lower(): value for (key, value) in response.items()}
 
         # Si estoy en modo debug imprimo el estado de los servidores
         if self.config['debug']:
             logging.info('|===========  Servidores AFIP  ===========')
-            logging.info('| AppServer: ' + response.appserver)
-            logging.info('| AuthServer: ' + response.authserver)
-            logging.info('| DBServer: ' + response.dbserver)
+            logging.info('| AppServer: ' + status['appserver'])
+            logging.info('| AuthServer: ' + status['authserver'])
+            logging.info('| DBServer: ' + status['dbserver'])
             logging.info('|=================  ---  =================')
 
-        return server_down
+        # Devuelvo True si alguno de los componentes no está disponible
+        for value in status.values():
+            if value != 'OK':
+                return True
+
+        return False
 
     def get_output_path(self, name, string='<string>'):
         """
