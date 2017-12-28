@@ -51,7 +51,7 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.8.9'
+__version__ = '0.8.10'
 
 
 class WSSRPADRON(web_service.BaseWebService):
@@ -72,7 +72,7 @@ class WSSRPADRON(web_service.BaseWebService):
         """
         # Valido que el servicio de AFIP este funcionando
         if self.dummy():
-            raise SystemExit('Los servidores de AFIP se encuentran caídos')
+            raise SystemExit('El servicio de AFIP no se encuentra disponible')
 
         # Instancio Client con los datos del wsdl del Web Service
         client = self.soap_login(self.config['ws_wsdl'])
