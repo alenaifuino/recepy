@@ -46,7 +46,7 @@ from libs import utility, web_service
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.7.8'
+__version__ = '1.7.9'
 
 
 class WSAA(web_service.BaseWebService):
@@ -80,7 +80,7 @@ class WSAA(web_service.BaseWebService):
         timezone = utility.get_timezone(current_time.timestamp())
 
         # Creo la estructura del ticket de acceso según especificación técnica
-        # de AFIP
+        # de AFIP en formato bytes
         tra = etree.tostring(
             builder.E.loginTicketRequest(
                 builder.E.header(
@@ -104,7 +104,6 @@ class WSAA(web_service.BaseWebService):
             logging.info('|\n' + str(tra, 'utf-8').strip('\n'))
             logging.info('|=================  ---  =================')
 
-        # Devuelvo el TRA generado en formato bytes
         return tra
 
     def __create_cms(self, tra):
@@ -113,11 +112,16 @@ class WSAA(web_service.BaseWebService):
         certificado X.509 del contribuyente según especificación técnica de
         AFIP
         """
-        cms = Popen([
+        # Llamo a openssl y genero el CMS
+        cms, error = Popen([
             'openssl', 'smime', '-sign', '-signer', self.config['certificate'],
             '-inkey', self.config['private_key'], '-outform', 'DER',
             '-nodetach'
-            ], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(tra)[0]
+            ], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(tra)
+
+        # Muestro el error si no pude generar el CMS
+        if error:
+            raise IOError(error)
 
         # Codifico el mensaje CMS en formato Base64
         cms = b64encode(cms)
@@ -129,7 +133,6 @@ class WSAA(web_service.BaseWebService):
             logging.info('| Mensaje CMS en Base64 creado exitosamente')
             logging.info('|=================  ---  =================')
 
-        # Devuelvo el CMS
         return cms
 
     def __login_cms(self, cms):
@@ -188,6 +191,8 @@ class WSAA(web_service.BaseWebService):
             except FileNotFoundError:
                 raise SystemExit('No se pudo generar el mensaje CMS: '
                                  'el ejecutable openssl no está disponible')
+            except IOError as error:
+                raise SystemExit(error)
 
             # Envío el CMS al WSAA de AFIP
             try:
