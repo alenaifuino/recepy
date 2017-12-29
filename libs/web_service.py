@@ -25,7 +25,7 @@ from config.config import OUTPUT_DIR
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.2.2'
+__version__ = '1.2.3'
 
 
 class BaseWebService():
@@ -47,9 +47,6 @@ class BaseWebService():
         # información se mantiene de manera persistente
         session = Session()
 
-        # Incluyo el certificado en formato PEM
-        session.verify = self.config['ca_cert']
-
         # Instancio Transport con la información de sesión y el timeout a
         # utilizar en la conexión
         transport = Transport(session=session, timeout=timeout)
@@ -57,8 +54,12 @@ class BaseWebService():
         # Instancio Client con los datos del wsdl y de transporte
         client = Client(wsdl=wsdl, transport=transport)
 
-        # Obtengo la respuesta de AFIP según el tipo de método
-        response = getattr(client.service, name)(**parameters)
+        # Obtengo la respuesta de AFIP según el tipo de método y los parámetros
+        # suministrados
+        if not parameters:
+            response = getattr(client.service, name)()
+        else:
+            response = getattr(client.service, name)(**parameters)
 
         # Serializo y devuelvo la respuesta de AFIP
         return helpers.serialize_object(response)

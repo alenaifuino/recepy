@@ -46,7 +46,7 @@ from libs import utility, web_service
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.7.7'
+__version__ = '1.7.8'
 
 
 class WSAA(web_service.BaseWebService):
@@ -317,7 +317,6 @@ def main():
         logging.info('| Clave Privada: %s', config_data['private_key'])
         logging.info('| Frase Secreta: %s',
                      '******' if config_data['passphrase'] else None)
-        logging.info('| CA AFIP:       %s', config_data['ca_cert'])
         logging.info('| WSAA WSDL:     %s', config_data['wsdl'])
         logging.info('| WS:            %s', config_data['web_service'])
         logging.info('| WS WSDL:       %s', config_data['ws_wsdl'])

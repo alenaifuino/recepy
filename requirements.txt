@@ -1,3 +1,4 @@
+certifi
 configparser==3.5.0
 zeep==2.4.0
 ntplib==0.3.3

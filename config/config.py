@@ -16,7 +16,7 @@ Módulo de configuración de la aplicación recepy
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.6.1'
+__version__ = '0.6.2'
 
 
 # Activa o desactiva el modo DEBUG
@@ -31,7 +31,6 @@ CONFIG = {
     },
     "private_key": "config/certificates/private.key",
     "passphrase": "",
-    "ca_cert": "config/certificates/afip_ca.crt",
     "wsdl": {
         "test": "https://wsaahomo.afip.gov.ar/ws/services/LoginCms?WSDL",
         "prod": "https://wsaa.afip.gov.ar/ws/services/LoginCms?WSDL",

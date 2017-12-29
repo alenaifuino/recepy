@@ -51,8 +51,6 @@ docs/_build/
 
 # Private Data
 config/certificates
-!config/certificates/afip_ca.crt
-!config/certificates/arba_ca.crt
 data/
 afip-ws/
 *.old

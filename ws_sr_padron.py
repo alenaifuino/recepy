@@ -43,15 +43,13 @@ import sys
 from datetime import datetime
 from json import dumps
 
-from zeep import helpers
-
 from libs import utility, web_service
 from wsaa import WSAA
 
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.8.10'
+__version__ = '0.8.11'
 
 
 class WSSRPADRON(web_service.BaseWebService):
@@ -74,9 +72,6 @@ class WSSRPADRON(web_service.BaseWebService):
         if self.dummy():
             raise SystemExit('El servicio de AFIP no se encuentra disponible')
 
-        # Instancio Client con los datos del wsdl del Web Service
-        client = self.soap_login(self.config['ws_wsdl'])
-
         # Defino los parámetros comunes de los web services padron de AFIP
         params = {
             'token': ticket_data['token'],
@@ -92,18 +87,15 @@ class WSSRPADRON(web_service.BaseWebService):
             params['collectionName'] = self.config[option]
             service_name = 'getParameterCollectionByName'
 
-        # Obtengo la respuesta de AFIP según el tipo de método
-        response = getattr(client.service, service_name)(**params)
-
-        # Serializo el objeto de respuesta de AFIP
-        response_dict = helpers.serialize_object(response)
+        # Obtengo la respuesta del WSDL de AFIP
+        response = self.soap_connect(
+            self.config['ws_wsdl'], service_name, params)
 
         # Recorro y modifico el diccionario para los items del tipo datetime
-        utility.map_nested_dicts(
-            response_dict, utility.datetime_to_string, datetime)
+        utility.map_nested_dicts(response, utility.datetime_to_string, datetime)
 
         # Lo transformo a JSON
-        json_response = dumps(response_dict, indent=2, ensure_ascii=False)
+        json_response = dumps(response, indent=2, ensure_ascii=False)
 
         # Genero el archivo con la respuesta de AFIP
         output = self.get_output_path(name=self.config[option])
@@ -135,7 +127,6 @@ def main():
         logging.info('| Clave Privada: %s', config_data['private_key'])
         logging.info('| Frase Secreta: %s',
                      '******' if config_data['passphrase'] else None)
-        logging.info('| CA AFIP:       %s', config_data['ca_cert'])
         logging.info('| WSAA WSDL:     %s', config_data['wsdl'])
         logging.info('| WS:            %s', config_data['web_service'])
         logging.info('| WS WSDL:       %s', config_data['ws_wsdl'])

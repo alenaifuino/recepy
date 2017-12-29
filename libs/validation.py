@@ -16,7 +16,7 @@ Módulo con funciones auxiliares para la gestión de validación de input
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.6.2"
+__version__ = "0.6.3"
 
 
 def check_cuit(cuit):
@@ -84,9 +84,6 @@ def check_config(data):
     if data['passphrase']:
         if not isinstance(data['passphrase'], str):
             raise ValueError('La clave "passphrase" no es una cadena de texto')
-
-    # Valida el Certificado CA
-    check_file(data['ca_cert'], name='ca_cert')
 
     # Valida los WSDL
     for wsdl in ['wsdl', 'ws_wsdl']:
