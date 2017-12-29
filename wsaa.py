@@ -46,7 +46,7 @@ from libs import utility, web_service
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.7.9'
+__version__ = '1.8.3'
 
 
 class WSAA(web_service.BaseWebService):
@@ -135,7 +135,21 @@ class WSAA(web_service.BaseWebService):
 
         return cms
 
-    def __login_cms(self, cms):
+    def __parse_login_response(self, xml, encoding='utf-8'):
+        """
+        Parsea la respuesta de login al Web Service WSAA de AFIP
+        """
+        # Armo el árbol del string que recibo
+        tree = etree.fromstring(bytes(xml, encoding))
+
+        # Actualizo los valores de los atributos para la lista de elementos
+        for element in ['token', 'sign', 'expirationTime']:
+            # patch para convertir expirationTime a formato snake... tal vez
+            # más adelante justifique hacer una función camelCase a snake_case
+            attr = element if element != 'expirationTime' else 'expiration_time'
+            setattr(self, attr, tree.find('.//' + element).text)
+
+    def __login_cms(self, cms, ticket):
         """
         Conecta al Web Service SOAP de AFIP y obtiene respuesta en base al CMS
         que se envía
@@ -146,12 +160,12 @@ class WSAA(web_service.BaseWebService):
         # XML de respuesta
         response = self.soap_connect(self.config['wsdl'], 'loginCms', params)
 
-        # Establezco atributos
-        self.token = parse_afip_response(response)['token']
-        self.sign = parse_afip_response(response)['sign']
-        self.expiration_time = parse_afip_response(response)['expiration_time']
+        # Genero el archivo con la respuesta de AFIP
+        with open(ticket, 'w') as _:
+            _.write(response)
 
-        return response
+        # Parseo los elementos de la respuestsa XML de AFIP
+        self.__parse_login_response(response)
 
     def get_ticket(self):
         """
@@ -166,14 +180,8 @@ class WSAA(web_service.BaseWebService):
             with open(ticket, 'r') as file:
                 xml = file.read()
 
-            # Obtengo los elementos del archivo XML
-            elements = parse_afip_response(xml)
-
-            # Verifico si el ticket todavía es válido
-            if valid_tra(elements['expiration_time']):
-                self.token = elements['token']
-                self.sign = elements['sign']
-                self.expiration_time = elements['expiration_time']
+            # Parseo los elementos del archivo XML
+            self.__parse_login_response(xml)
         except FileNotFoundError:
             # Verifico si el objeto ya tiene los datos de un TRA en sus
             # atributos y si estos son válidos
@@ -196,23 +204,8 @@ class WSAA(web_service.BaseWebService):
 
             # Envío el CMS al WSAA de AFIP
             try:
-                # Obtengo la respuesta de AFIP
-                response = self.__login_cms(cms)
-
-                # Genero el archivo con la respuesta de AFIP
-                with open(ticket, 'w') as file:
-                    file.write(response)
-
-                # Parseo la respuesta de AFIP
-                elements = parse_afip_response(response)
-
-                # Actualizo los atributos del objeto
-                self.token = elements['token']
-                self.sign = elements['sign']
-                self.expiration_time = elements['expiration_time']
-            except requests_exceptions.SSLError:
-                raise SystemExit('El CA suministrado para validación SSL del '
-                                 'WSAA es incorrecto')
+                # Obtengo y guardo la respuesta de AFIP
+                self.__login_cms(cms, ticket)
             except requests_exceptions.ConnectionError:
                 raise SystemExit('No se pudo establecer conexión con el '
                                  'Web Service WSAA de AFIP')
@@ -221,12 +214,10 @@ class WSAA(web_service.BaseWebService):
                     'Error: {} - {}'.format(error.code, error.message))
 
         # Diccionario con los valores devueltos por AFIP
-        output = {
+        return {
             'token': self.token,
             'sign': self.sign,
             'expiration_time': self.expiration_time}
-
-        return output
 
 
 def valid_tra(ticket_time):
@@ -257,24 +248,6 @@ def valid_tra(ticket_time):
         return True
 
     return False
-
-
-def parse_afip_response(xml_data):
-    """
-    Obtiene los elementos de la respuesta provista por AFIP
-    """
-    # Armo el árbol del string que recibo
-    tree = etree.fromstring(bytes(xml_data, 'utf-8'))
-
-    # Inicializo el diccionario de respuesta
-    output = {}
-
-    # Extraigo los elementos que requiero
-    output['token'] = tree.find('credentials').find('token').text
-    output['sign'] = tree.find('credentials').find('sign').text
-    output['expiration_time'] = tree.find('header').find('expirationTime').text
-
-    return output
 
 
 def print_output(ticket_data):
