@@ -46,7 +46,7 @@ from libs import utility, web_service
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.8.3'
+__version__ = '1.8.5'
 
 
 class WSAA(web_service.BaseWebService):
@@ -183,13 +183,11 @@ class WSAA(web_service.BaseWebService):
             # Parseo los elementos del archivo XML
             self.__parse_login_response(xml)
         except FileNotFoundError:
-            # Verifico si el objeto ya tiene los datos de un TRA en sus
-            # atributos y si estos son válidos
-            if self.expiration_time and not valid_tra(self.expiration_time):
-                self.expiration_time = None
+            # No hay ticket en disco
+            pass
 
         # El TRA no existe o no está vigente
-        if not self.expiration_time:
+        if not valid_tra(self.expiration_time):
             # Creo el Ticket de Requerimiento de Acceso (TRA)
             tra = self.__create_tra()
 
@@ -224,6 +222,10 @@ def valid_tra(ticket_time):
     """
     Verifica si el ticket de acceso está vigente
     """
+    # La fechahora del ticket no está establecido
+    if not ticket_time:
+        return False
+
     # Defino un delta el cuál sustraigo de expiration_time para evitar
     # situaciones donde se de como válido un ticket pero este expire pocos
     # segundos después, ocasionando que el ticket no sea válido por haber
