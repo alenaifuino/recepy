@@ -45,7 +45,7 @@ from libs import utility, web_service
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.9.14'
+__version__ = '1.9.15'
 
 
 class WSAA(web_service.WSBAse):
@@ -290,7 +290,7 @@ def main():
 
     # Muestro las opciones de configuración via stdouts
     if config_data['debug']:
-        print_config(config_data)
+        utility.print_config(config_data)
 
     # Instancio WSAA para obtener un objeto de autenticación y autorización
     wsaa = WSAA(config_data)
