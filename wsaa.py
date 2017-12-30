@@ -31,7 +31,6 @@ http://www.afip.gov.ar/ws/WSAA/Especificacion_Tecnica_WSAA_1.2.2.pdf
 
 import logging
 import random
-import sys
 from base64 import b64encode
 from datetime import timedelta
 from subprocess import PIPE, Popen
@@ -46,7 +45,7 @@ from libs import utility, web_service
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.9.2'
+__version__ = '1.9.14'
 
 
 class WSAA(web_service.WSBAse):
@@ -63,6 +62,7 @@ class WSAA(web_service.WSBAse):
         self.private_key = config['private_key']
         self.wsdl = config['wsdl']
         self.expiration_time = None
+        self.path = None
 
     def __create_tra(self):
         """
@@ -154,7 +154,7 @@ class WSAA(web_service.WSBAse):
             attr = element if element != 'expirationTime' else 'expiration_time'
             setattr(self, attr, tree.find('.//' + element).text)
 
-    def __login_cms(self, cms, ticket):
+    def __login_cms(self, cms):
         """
         Conecta al Web Service SOAP de AFIP y obtiene respuesta en base al CMS
         que se envía
@@ -166,7 +166,7 @@ class WSAA(web_service.WSBAse):
         response = self.soap_connect(self.wsdl, 'loginCms', params)
 
         # Genero el archivo con la respuesta de AFIP
-        with open(ticket, 'w') as _:
+        with open(self.ticket, 'w') as _:
             _.write(response)
 
         # Parseo los elementos de la respuestsa XML de AFIP
@@ -178,11 +178,11 @@ class WSAA(web_service.WSBAse):
         solicita uno nuevo al Web Service de AFIP
         """
         # Obtengo el ticket del disco local
-        ticket = self.get_output_path(name=self.web_service)
+        self.path = self.get_output_path(name=self.web_service)
 
         # Verifico si hay un ticket en disco y obtengo sus datos
         try:
-            with open(ticket, 'r') as file:
+            with open(self.path, 'r') as file:
                 xml = file.read()
 
             # Parseo los elementos del archivo XML
@@ -208,20 +208,13 @@ class WSAA(web_service.WSBAse):
             # Envío el CMS al WSAA de AFIP
             try:
                 # Obtengo y guardo la respuesta de AFIP
-                self.__login_cms(cms, ticket)
+                self.__login_cms(cms)
             except requests_exceptions.ConnectionError:
                 raise SystemExit('No se pudo establecer conexión con el '
                                  'Web Service WSAA de AFIP')
             except zeep_exceptions.Fault as error:
                 raise SystemExit('Error: {} - {}'.format(
                     error.code, error.message))
-
-        # Diccionario con los valores devueltos por AFIP
-        return {
-            'token': self.token,
-            'sign': self.sign,
-            'expiration_time': self.expiration_time
-        }
 
 
 def valid_tra(ticket_time):
@@ -258,16 +251,16 @@ def valid_tra(ticket_time):
     return False
 
 
-def print_output(ticket_data):
+def print_output(ticket):
     """
     Imprime la salida final del script
     """
     # Diccionario con los datos de salida
     data = {
-        'Ticket en: ': ticket_data['path'],
-        'Token: ': ticket_data['token'][:25] + '...',
-        'Sign: ': ticket_data['sign'][:25] + '...',
-        'Expiration Time: ': ticket_data['expiration_time']
+        'Ticket en: ': ticket.path,
+        'Token: ': ticket.token[:25] + '...',
+        'Sign: ': ticket.sign[:25] + '...',
+        'Expiration Time: ': ticket.expiration_time
     }
 
     # Obtengo la etiqueta más larga para hacer el padding adecuado
@@ -297,28 +290,16 @@ def main():
 
     # Muestro las opciones de configuración via stdouts
     if config_data['debug']:
-        logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-        logging.info('|============  Configuración  ============')
-        logging.info('| Certificado:   %s', config_data['certificate'])
-        logging.info('| Clave Privada: %s', config_data['private_key'])
-        logging.info('| Frase Secreta: %s', '******'
-                     if config_data['passphrase'] else None)
-        logging.info('| WSAA WSDL:     %s', config_data['wsdl'])
-        logging.info('| WS:            %s', config_data['web_service'])
-        logging.info('| WS WSDL:       %s', config_data['ws_wsdl'])
-        logging.info('|=================  ---  =================')
+        print_config(config_data)
 
     # Instancio WSAA para obtener un objeto de autenticación y autorización
     wsaa = WSAA(config_data)
 
     # Obtengo el ticket de autorización de AFIP
-    ticket_data = wsaa.get_ticket()
-
-    # Obtengo el path donde está almacenado el ticket
-    ticket_data['path'] = wsaa.get_output_path(name=config_data['web_service'])
+    wsaa.get_ticket()
 
     # Imprimo la salida luego de parsear el archivo XML
-    print_output(ticket_data)
+    print_output(wsaa)
 
 
 if __name__ == '__main__':
