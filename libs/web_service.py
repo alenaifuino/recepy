@@ -10,7 +10,7 @@
 # MERCHANTIBILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 # General Public License for more details.
 """
-Módulo con clases y funciones para el acceso a web services SOAP
+Módulo con clases para la gestión de Web Services SOAP
 """
 
 import logging
@@ -25,17 +25,20 @@ from config.config import OUTPUT_DIR
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.2.3'
+__version__ = '1.3.2'
 
 
-class BaseWebService():
+class WSBAse():
     """
-    Clase que se usa como base para los web services particulares de
-    acceso al sistema Web Service SOAP de AFIP
+    Clase que se usa como base para los web services de acceso al
+    sistema SOAP de AFIP
     """
-    def __init__(self, config, out_file):
-        self.config = config
-        self.out_dir = OUTPUT_DIR + config['web_service']
+    def __init__(self, debug, ws_wsdl, web_service, out_file):
+        self.token = None
+        self.sign = None
+        self.debug = debug
+        self.ws_wsdl = ws_wsdl
+        self.out_dir = OUTPUT_DIR + web_service
         self.out_file = out_file
 
     def soap_connect(self, wsdl, name, parameters=None, timeout=30):
@@ -70,13 +73,13 @@ class BaseWebService():
         servicio de AFIP: aplicación, autenticación y base de datos
         """
         # Obtengo la respuesta de AFIP
-        response = self.soap_connect(self.config['ws_wsdl'], service_name)
+        response = self.soap_connect(self.ws_wsdl, service_name)
 
         # Armo un diccionario con el estado de cada componente
         status = {key.lower(): value for (key, value) in response.items()}
 
         # Si estoy en modo debug imprimo el estado de los servidores
-        if self.config['debug']:
+        if self.debug:
             logging.info('|===========  Servidores AFIP  ===========')
             logging.info('| AppServer: ' + status['appserver'])
             logging.info('| AuthServer: ' + status['authserver'])
