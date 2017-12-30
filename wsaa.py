@@ -46,26 +46,30 @@ from libs import utility, web_service
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.8.6'
+__version__ = '1.9.2'
 
 
-class WSAA(web_service.BaseWebService):
+class WSAA(web_service.WSBAse):
     """
     Clase que se usa de interfaz para el Web Service de Autenticación
     y Autorización de AFIP
     """
 
     def __init__(self, config):
-        self.config = config
-        super().__init__(self.config, 'ta.xml')
-        self.token = self.sign = self.expiration_time = None
+        super().__init__(config['debug'], config['ws_wsdl'],
+                         config['web_service'], 'ta.xml')
+        self.prod = config['prod']
+        self.certificate = config['certificate']
+        self.private_key = config['private_key']
+        self.wsdl = config['wsdl']
+        self.expiration_time = None
 
     def __create_tra(self):
         """
         Crea un Ticket de Requerimiento de Acceso (TRA)
         """
         # Establezco el tipo de conexión para usar en el tag destination
-        dcn = 'wsaa' if self.config['prod'] == 'prod' else 'wsaahomo'
+        dcn = 'wsaa' if self.prod == 'prod' else 'wsaahomo'
         dest = 'cn=' + dcn + ',o=afip,c=ar,serialNumber=CUIT 33693450239'
 
         # Obtengo la fechahora actual
@@ -90,16 +94,14 @@ class WSAA(web_service.BaseWebService):
                     builder.E.generationTime(str(generation_time) + timezone),
                     builder.E.expirationTime(str(expiration_time) + timezone),
                 ),
-                builder.E.service(self.config['web_service']),
-                version='1.0'
-            ),
+                builder.E.service(self.web_service),
+                version='1.0'),
             pretty_print=True,
             xml_declaration=True,
-            encoding='UTF-8'
-        )
+            encoding='UTF-8')
 
         # Muestro el TRA si estoy en modo debug
-        if self.config['debug']:
+        if self.debug:
             logging.info('|=================  TRA  =================')
             logging.info('|\n' + str(tra, 'utf-8').strip('\n'))
             logging.info('|=================  ---  =================')
@@ -113,11 +115,14 @@ class WSAA(web_service.BaseWebService):
         AFIP
         """
         # Llamo a openssl y genero el CMS
-        cms, error = Popen([
-            'openssl', 'smime', '-sign', '-signer', self.config['certificate'],
-            '-inkey', self.config['private_key'], '-outform', 'DER',
-            '-nodetach'
-            ], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate(tra)
+        cms, error = Popen(
+            [
+                'openssl', 'smime', '-sign', '-signer', self.certificate,
+                '-inkey', self.private_key, '-outform', 'DER', '-nodetach'
+            ],
+            stdin=PIPE,
+            stdout=PIPE,
+            stderr=PIPE).communicate(tra)
 
         # Muestro el error si no pude generar el CMS
         if error:
@@ -128,7 +133,7 @@ class WSAA(web_service.BaseWebService):
 
         # Muestro el mensaje de éxito y no el mensaje CMS propiamente dicho
         # ya que el mismo no aporta nada al debug
-        if self.config['debug']:
+        if self.debug:
             logging.info('|=================  CMS  =================')
             logging.info('| Mensaje CMS en Base64 creado exitosamente')
             logging.info('|=================  ---  =================')
@@ -142,7 +147,7 @@ class WSAA(web_service.BaseWebService):
         # Armo el árbol del string que recibo
         tree = etree.fromstring(bytes(xml, encoding))
 
-        # Actualizo los valores de los atributos para la lista de elementos
+        # Actualizo los valores de los atributos token, sign y expiration_time
         for element in ['token', 'sign', 'expirationTime']:
             # patch para convertir expirationTime a formato snake... tal vez
             # más adelante justifique hacer una función camelCase a snake_case
@@ -158,7 +163,7 @@ class WSAA(web_service.BaseWebService):
         params = {'in0': cms}
 
         # XML de respuesta
-        response = self.soap_connect(self.config['wsdl'], 'loginCms', params)
+        response = self.soap_connect(self.wsdl, 'loginCms', params)
 
         # Genero el archivo con la respuesta de AFIP
         with open(ticket, 'w') as _:
@@ -173,7 +178,7 @@ class WSAA(web_service.BaseWebService):
         solicita uno nuevo al Web Service de AFIP
         """
         # Obtengo el ticket del disco local
-        ticket = self.get_output_path(name=self.config['web_service'])
+        ticket = self.get_output_path(name=self.web_service)
 
         # Verifico si hay un ticket en disco y obtengo sus datos
         try:
@@ -208,14 +213,15 @@ class WSAA(web_service.BaseWebService):
                 raise SystemExit('No se pudo establecer conexión con el '
                                  'Web Service WSAA de AFIP')
             except zeep_exceptions.Fault as error:
-                raise SystemExit(
-                    'Error: {} - {}'.format(error.code, error.message))
+                raise SystemExit('Error: {} - {}'.format(
+                    error.code, error.message))
 
         # Diccionario con los valores devueltos por AFIP
         return {
             'token': self.token,
             'sign': self.sign,
-            'expiration_time': self.expiration_time}
+            'expiration_time': self.expiration_time
+        }
 
 
 def valid_tra(ticket_time):
@@ -295,8 +301,8 @@ def main():
         logging.info('|============  Configuración  ============')
         logging.info('| Certificado:   %s', config_data['certificate'])
         logging.info('| Clave Privada: %s', config_data['private_key'])
-        logging.info('| Frase Secreta: %s',
-                     '******' if config_data['passphrase'] else None)
+        logging.info('| Frase Secreta: %s', '******'
+                     if config_data['passphrase'] else None)
         logging.info('| WSAA WSDL:     %s', config_data['wsdl'])
         logging.info('| WS:            %s', config_data['web_service'])
         logging.info('| WS WSDL:       %s', config_data['ws_wsdl'])
