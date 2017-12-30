@@ -73,7 +73,7 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.1.2'
+__version__ = '0.2.4'
 
 
 class WSFE(web_service.BaseWebService):
@@ -93,9 +93,6 @@ class WSFE(web_service.BaseWebService):
         if self.dummy('FEDummy'):
             raise SystemExit('El servicio de AFIP no se encuentra disponible')
 
-        # Instancio Client con los datos del wsdl del Web Service
-        client = self.soap_login(self.config['ws_wsdl'])
-
         # Formateo el tipo de requerimiento
         req_type = req_type.upper()
 
@@ -112,7 +109,7 @@ class WSFE(web_service.BaseWebService):
         }
 
         # Defino los parámetros adicionales según el tipo de requerimiento
-        if req_type == 'CAE':
+        if req_type == 'FECAESolicitar':
             extra = {
                 'FeCAEReq': {
                     'FeCabReq': {
@@ -172,7 +169,7 @@ class WSFE(web_service.BaseWebService):
                     }
                 }
             }
-        elif req_type == 'CAEA':
+        elif req_type == 'FECAEASolicitar' or req_type == 'FECAEAConsultar':
             extra = {
                 'Periodo': '',
                 'Orden': ''
@@ -181,33 +178,121 @@ class WSFE(web_service.BaseWebService):
         # Actualizo el diccionario de parámetros
         params.update(extra)
 
-    def request_param(self, service_name, ticket_data, **kwargs):
+        # Obtengo la respuesta del WSDL de AFIP
+        response = self.soap_connect(
+            self.config['ws_wsdl'], service_name, params)
+
+        {
+            'FECAEASinMovimientoInformar': {
+                'PtoVta': '',
+                'CAEA': ''
+            },
+            'FECAEARegInformativo': {
+                'FeCAEARegInfReq': {
+                    'FeCabReq': {
+                        'CantReg': '',
+                        'PtoVta': '',
+                        'CbteTipo': ''
+                    },
+                    'FeDetReq': {
+                        'FECAEADetRequest': {
+                            'Concepto': 'Concepto',
+                            'DocTipo': 'DocTipo',
+                            'DocNro': 'DocNro',
+                            'CbteDesde': 'CbteDesde',
+                            'CbteHasta': 'CbteHasta',
+                            'CbteFch': 'CbteFch',
+                            'ImpTotal': 'ImpTotal',
+                            'ImpTotConc': 'ImpTotConc',
+                            'ImpNeto': 'ImpNeto',
+                            'ImpOpEx': 'ImpOpEx',
+                            'ImpIVA': 'ImpIVA',
+                            'ImpTrib': 'ImpTrib',
+                            'FchServDesde': 'FchServDesde',
+                            'FchServHasta': 'FchServHasta',
+                            'FchVtoPago': 'FchVtoPago',
+                            'MonId': 'MonId',
+                            'MonCotiz': 'MonCotiz',
+                            'CbtesAsoc': {
+                                'CbteAsoc': {
+                                    'Tipo': '',
+                                    'PtoVta': '',
+                                    'Nro': ''
+                                }
+                            },
+                            'Tributos': {
+                                'Tributo': {
+                                    'Id': '',
+                                    'Desc': '',
+                                    'BaseImp': '',
+                                    'Alic': '',
+                                    'Importe': ''
+                                }
+                            },
+                            'Iva': {
+                                'AlicIva': {
+                                    'Id': '',
+                                    'BaseImp': '',
+                                    'Importe': ''
+                                }
+                            },
+                            'Opcionales': {
+                                'Opcional': {
+                                    'Id': '',
+                                    'Valor': ''
+                                }
+                            },
+                            'CAEA': ''
+                        }
+                    }
+                }
+            },
+            'FECAEASinMovimientoConsultar': {
+                'CAEA': '',
+                'PtoVta': ''
+            },
+            'FECompUltimoAutorizado': {
+                'PtoVta': '',
+                'CbteTipo': ''
+            },
+            'FECompConsultar': {
+                'FeCompConsReq': {
+                    'CbteTipo': '',
+                    'CbteNro': '',
+                    'PtoVta': ''
+                }
+            },
+            'FECompTotXRequest': ''
+        }
+
+    def request_param(self, ticket_data):
         """
         Método genérico que realiza la solicitud al método de AFIP definido
         según service_name
         """
-        SERVICE_NAMES = (
-            'FEParamGetTiposCbte',
-            'FEParamGetTiposConcepto',
-            'FEParamGetTiposDoc',
-            'FEParamGetTiposIva',
-            'FEParamGetTiposMonedas',
-            'FEParamGetTiposOpcional',
-            'FEParamGetTiposTributos',
-            'FEParamGetPtosVenta',
-            'FEParamGetCotizacion'
-        )
+        service_names = {
+            'comprobante': 'FEParamGetTiposCbte',
+            'concepto': 'FEParamGetTiposConcepto',
+            'documento': 'FEParamGetTiposDoc',
+            'iva': 'FEParamGetTiposIva',
+            'monedas': 'FEParamGetTiposMonedas',
+            'opcional': 'FEParamGetTiposOpcional',
+            'tributos': 'FEParamGetTiposTributos',
+            'puntos_venta': 'FEParamGetPtosVenta',
+            'cotizacion': 'FEParamGetCotizacion',
+            'tipos_paises': 'FEParamGetTiposPaises',
+        }
 
-        # Valido el nombre del método solicitado
-        if service_name not in SERVICE_NAMES:
-            raise SystemExit('El método no está soportado por el Web Service')
+        # Valido el nombre del método solicitado y lo asigno si es válido
+        if self.config['parameter'] not in service_names.keys():
+            raise SystemExit('El parámetro no está soportado por el Web '
+                             'Service de Factura Electrónica')
+        else:
+            service_name = service_names[self.config['parameter']]
 
         # Valido que el servicio de AFIP esté funcionando
         if self.dummy('FEDummy'):
             raise SystemExit('El servicio de AFIP no se encuentra disponible')
-
-        # Instancio Client con los datos del wsdl del Web Service
-        client = self.soap_login(self.config['ws_wsdl'])
 
         # Defino los parámetros de autenticación
         params = {
@@ -220,11 +305,21 @@ class WSFE(web_service.BaseWebService):
 
         # Agrego los parámetros adicionales según el método solicitado
         if service_name == 'FEParamGetCotizacion':
-            if 'MonId' not in kwargs.keys():
-                raise ValueError('El método FEParamGetCotizacion requiere '
-                                 'la presencia del parámetro "MonId"')
-            else:
-                params.update({'MonId': kwargs['MonId']})
+            params.update({'MonId': self.config['currency_id']})
+
+        # Obtengo la respuesta del WSDL de AFIP
+        response = self.soap_connect(
+            self.config['ws_wsdl'], service_name, params)
+
+        # Lo transformo a JSON
+        json_response = dumps(response, indent=2, ensure_ascii=False)
+
+        # Genero el archivo con la respuesta de AFIP
+        output = self.get_output_path(name=self.config['parameter'])
+        with open(output, 'w') as file:
+            file.write(json_response)
+
+        return json_response
 
 
 def main():
@@ -263,9 +358,13 @@ def main():
     # Obtengo la respuesta de AFIP
     ticket_data = wsaa.get_ticket()
 
+    # Obtengo los datos solicitados
+    if config_data['parameter']:
+        voucher.request_param(ticket_data)
+
     # Imprimo la ubicación del archivo de salida
     print('Respuesta AFIP en: {}'.format(
-        voucher.get_output_path(name=config_data['web_service'])))
+        voucher.get_output_path(name=config_data['parameter'])))
 
 
 if __name__ == '__main__':

@@ -31,7 +31,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.1.9"
+__version__ = "1.1.10"
 
 
 # Archivo de configuración
@@ -77,7 +77,6 @@ def base_parser(script, version):
     Parser a ser utilizado como base para cada parser de cada script
     """
     # TODO: traducir mensajes internos de argparse al español
-    # TODO: reimplementar como Clase
 
     # Creo el parser de la línea de comandos
     parser = argparse.ArgumentParser(add_help=False)
@@ -97,10 +96,6 @@ def base_parser(script, version):
         help='define la frase secreta de la clave privada',
         default='')
     parser.add_argument(
-        '--web-service',
-        help='define el Web Service al que se le solicita acceso',
-        choices=WEB_SERVICES)
-    parser.add_argument(
         '--prod',
         help='solicita el acceso al ambiente de producción',
         action='store_true',
@@ -115,7 +110,13 @@ def base_parser(script, version):
         version='%(prog)s ' + version)
 
     # Incluyo argumentos específicos por script
-    if script == 'ws_sr_padron.py':
+    # TODO mover esto adentro de cada script
+    if script == 'wsaa.py':
+        parser.add_argument(
+            '--web-service',
+            help='define el Web Service al que se le solicita acceso',
+            choices=WEB_SERVICES)
+    elif script == 'ws_sr_padron.py':
         # Creo el grupo de comandos mutuamente exclusivos
         padron = parser.add_mutually_exclusive_group()
 
@@ -135,12 +136,29 @@ def base_parser(script, version):
             choices=A100_COLLECTIONS,
             dest='table')
     elif script == 'wsfe.py':
-        parser.add_argument(
+        # Creo el grupo de comandos mutuamente exclusivos
+        wsfe = parser.add_mutually_exclusive_group()
+
+        wsfe.add_argument(
             '--tipo',
             help='define el tipo de comprobante a solicitar',
             default='CAE',
             choices=['CAE', 'CAEA'],
             dest='type')
+        wsfe.add_argument(
+            '--parametro',
+            help='define el parámetro a ser consultado en las tablas de AFIP',
+            choices=[
+                'comprobante', 'concepto', 'documento', 'iva', 'monedas',
+                'opcional', 'tributos', 'puntos_venta', 'cotizacion',
+                'tipos_paises'],
+            dest='parameter'
+        )
+        parser.add_argument(
+            '--id-moneda',
+            help='define el ID de la moneda a consultar su cotización',
+            dest='currency_id'
+        )
 
     return parser
 
@@ -161,7 +179,12 @@ def cli_parser(script, version):
     args = parser.parse_args()
 
     # Establezco los chequeos de la línea de comando según el script
-    if script == 'ws_sr_padron.py':
+    # TODO mover esto adentro de cada script
+    if script == 'wsaa.py':
+        if not args.web_service:
+            raise parser.error('Debe definir el Web Service al que quiere '
+                               'solicitar acceso')
+    elif script == 'ws_sr_padron.py':
         if not args.scope:
             raise parser.error('Debe definir el Padrón AFIP a consultar')
         elif args.table and not args.scope == 100:
@@ -172,17 +195,16 @@ def cli_parser(script, version):
         elif not args.taxpayer and args.scope != 100:
             raise parser.error('La opción --persona debe definir el CUIT del '
                                'contribuyente a consultar en el Padrón AFIP')
-
         # Establezco el nombre del web service según el alcance
         args.web_service = script[:-3] + '_a' + str(args.scope)
     elif script == 'wsfe.py':
+        if not args.type or not args.parameter:
+            raise parser.error('Debe seleccionar un comprobante a autorizar o '
+                               'un parámetro a consultar')
+        if args.parameter == 'cotizacion' and not args.currency_id:
+            raise parser.error('Debe definir el ID de la moneda a cotizar')
         # Establezco el nombre del web service
         args.web_service = script[:-3]
-
-    # Establezco los chequeos estándar de la línea de comandos
-    if not args.web_service:
-        raise parser.error('Debe definir el Web Service al que quiere '
-                           'solicitar acceso')
 
     # Incluyo el nombre del script como argumento
     args.script = script
