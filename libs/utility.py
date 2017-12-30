@@ -31,7 +31,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.1.10"
+__version__ = "1.1.12"
 
 
 # Archivo de configuración
@@ -129,12 +129,12 @@ def base_parser(script, version):
         padron.add_argument(
             '--persona',
             help='define el CUIT a ser consultado en el padrón AFIP',
-            dest='taxpayer')
+            dest='option')
         padron.add_argument(
             '--tabla',
             help='define la tabla a ser consultada en el padrón AFIP',
             choices=A100_COLLECTIONS,
-            dest='table')
+            dest='option')
     elif script == 'wsfe.py':
         # Creo el grupo de comandos mutuamente exclusivos
         wsfe = parser.add_mutually_exclusive_group()
@@ -195,16 +195,12 @@ def cli_parser(script, version):
         elif not args.taxpayer and args.scope != 100:
             raise parser.error('La opción --persona debe definir el CUIT del '
                                'contribuyente a consultar en el Padrón AFIP')
-        # Establezco el nombre del web service según el alcance
-        args.web_service = script[:-3] + '_a' + str(args.scope)
     elif script == 'wsfe.py':
         if not args.type or not args.parameter:
             raise parser.error('Debe seleccionar un comprobante a autorizar o '
                                'un parámetro a consultar')
         if args.parameter == 'cotizacion' and not args.currency_id:
             raise parser.error('Debe definir el ID de la moneda a cotizar')
-        # Establezco el nombre del web service
-        args.web_service = script[:-3]
 
     # Incluyo el nombre del script como argumento
     args.script = script
