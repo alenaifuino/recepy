@@ -19,12 +19,14 @@ Módulo con funciones auxiliares para la gestión de:
 
 import argparse
 import collections.abc
+import logging
+import sys
 from datetime import datetime, timedelta
 from socket import gaierror
 
 from ntplib import NTPClient, NTPException
 
-from config.config import CONFIG, DEBUG, WEB_SERVICES, A100_COLLECTIONS
+from config.config import A100_COLLECTIONS, CONFIG, DEBUG, WEB_SERVICES
 
 from . import validation
 
@@ -69,6 +71,21 @@ def get_config_data(args):
     validation.check_config(data)
 
     return data
+
+
+def print_config(data):
+    """
+    Imprime los datos básicos de configuración
+    """
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+    logging.info('|============  Configuración  ============')
+    logging.info('| Certificado:   %s', data['certificate'])
+    logging.info('| Clave Privada: %s', data['private_key'])
+    logging.info('| Frase Secreta: %s', '****' if data['passphrase'] else None)
+    logging.info('| WSAA WSDL:     %s', data['wsdl'])
+    logging.info('| WS:            %s', data['web_service'])
+    logging.info('| WS WSDL:       %s', data['ws_wsdl'])
+    logging.info('|=================  ---  =================')
 
 
 # CLI
