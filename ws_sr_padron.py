@@ -49,7 +49,7 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.8.11'
+__version__ = '0.8.12'
 
 
 class WSSRPADRON(web_service.BaseWebService):
@@ -114,12 +114,11 @@ def main():
 
     # Obtengo los datos de configuración
     try:
-        # Obtengo los datos de configuración
         config_data = utility.get_config_data(args)
     except ValueError as error:
         raise SystemExit(error)
 
-    # Muestro las opciones de configuración via stderr
+    # Muestro las opciones de configuración via stdout
     if config_data['debug']:
         logging.basicConfig(stream=sys.stdout, level=logging.INFO)
         logging.info('|============  Configuración  ============')
@@ -138,7 +137,7 @@ def main():
     # Instancio WSAA para obtener un objeto de autenticación y autorización
     wsaa = WSAA(config_data)
 
-    # Obtengo la respuesta de AFIP
+    # Obtengo el ticket de autorización de AFIP
     ticket_data = wsaa.get_ticket()
 
     # Defino el método de conexión

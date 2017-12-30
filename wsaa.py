@@ -46,7 +46,7 @@ from libs import utility, web_service
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.8.5'
+__version__ = '1.8.6'
 
 
 class WSAA(web_service.BaseWebService):
@@ -283,13 +283,13 @@ def main():
     # Obtengo los parámetros pasados por línea de comandos
     args = utility.cli_parser(__file__, __version__)
 
+    # Obtengo los datos de configuración
     try:
-        # Obtengo los datos de configuración
         config_data = utility.get_config_data(args)
     except ValueError as error:
         raise SystemExit(error)
 
-    # Muestro las opciones de configuración via stderr
+    # Muestro las opciones de configuración via stdouts
     if config_data['debug']:
         logging.basicConfig(stream=sys.stdout, level=logging.INFO)
         logging.info('|============  Configuración  ============')
@@ -305,7 +305,7 @@ def main():
     # Instancio WSAA para obtener un objeto de autenticación y autorización
     wsaa = WSAA(config_data)
 
-    # Obtengo la respuesta de AFIP
+    # Obtengo el ticket de autorización de AFIP
     ticket_data = wsaa.get_ticket()
 
     # Obtengo el path donde está almacenado el ticket
