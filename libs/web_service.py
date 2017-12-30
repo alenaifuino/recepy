@@ -25,7 +25,7 @@ from config.config import OUTPUT_DIR
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.3.2'
+__version__ = '1.3.3'
 
 
 class WSBAse():
@@ -34,12 +34,13 @@ class WSBAse():
     sistema SOAP de AFIP
     """
     def __init__(self, debug, ws_wsdl, web_service, out_file):
-        self.token = None
-        self.sign = None
         self.debug = debug
         self.ws_wsdl = ws_wsdl
+        self.web_service = web_service
         self.out_dir = OUTPUT_DIR + web_service
         self.out_file = out_file
+        self.token = None
+        self.sign = None
 
     def soap_connect(self, wsdl, name, parameters=None, timeout=30):
         """
