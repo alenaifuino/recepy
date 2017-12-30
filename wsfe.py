@@ -73,7 +73,7 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.2.4'
+__version__ = '0.3.2'
 
 
 class WSFE(web_service.BaseWebService):
@@ -83,9 +83,11 @@ class WSFE(web_service.BaseWebService):
     """
     def __init__(self, config):
         self.config = config
+        self.token = None
+        self.sign = None
         super().__init__(self.config, '<string>.json')
 
-    def request_fe(self, req_type, ticket_data):
+    def __request_fe(self, req_type):
         """
         Método genérico que realiza la solicitud según el req_type definido
         """
@@ -102,8 +104,8 @@ class WSFE(web_service.BaseWebService):
         # Defino los parámetros de autenticación
         params = {
             'Auth': {
-                'Token': ticket_data['token'],
-                'Sign': ticket_data['sign'],
+                'Token': self.token,
+                'Sign': self.sign,
                 'Cuit': self.config['cuit']
             }
         }
@@ -265,7 +267,7 @@ class WSFE(web_service.BaseWebService):
             'FECompTotXRequest': ''
         }
 
-    def request_param(self, ticket_data):
+    def __request_param(self):
         """
         Método genérico que realiza la solicitud al método de AFIP definido
         según service_name
@@ -297,8 +299,8 @@ class WSFE(web_service.BaseWebService):
         # Defino los parámetros de autenticación
         params = {
             'Auth': {
-                'Token': ticket_data['token'],
-                'Sign': ticket_data['sign'],
+                'Token': self.token,
+                'Sign': self.sign,
                 'Cuit': self.config['cuit']
             }
         }
@@ -321,6 +323,18 @@ class WSFE(web_service.BaseWebService):
 
         return json_response
 
+    def request(self, option, ticket_data):
+        """
+        Método wrapper que define a qué método se llama en base a option
+        """
+        self.token = ticket_data['token']
+        self.sign = ticket_data['sign']
+
+        if option == 'parameter':
+            self.__request_param()
+        elif option == 'request':
+            self.__request_param()
+
 
 def main():
     """
@@ -331,12 +345,11 @@ def main():
 
     # Obtengo los datos de configuración
     try:
-        # Obtengo los datos de configuración
         config_data = utility.get_config_data(args)
     except ValueError as error:
         raise SystemExit(error)
 
-    # Muestro las opciones de configuración via stderr
+    # Muestro las opciones de configuración via stdout
     if config_data['debug']:
         logging.basicConfig(stream=sys.stdout, level=logging.INFO)
         logging.info('|============  Configuración  ============')
@@ -355,12 +368,14 @@ def main():
     # Instancio WSAA para obtener un objeto de autenticación y autorización
     wsaa = WSAA(config_data)
 
-    # Obtengo la respuesta de AFIP
+    # Obtengo el ticket de autorización de AFIP
     ticket_data = wsaa.get_ticket()
 
+    # Defino el método de conexión
+    option = 'parameter' if config_data['parameter'] else 'request'
+
     # Obtengo los datos solicitados
-    if config_data['parameter']:
-        voucher.request_param(ticket_data)
+    voucher.request(option, ticket_data)
 
     # Imprimo la ubicación del archivo de salida
     print('Respuesta AFIP en: {}'.format(
