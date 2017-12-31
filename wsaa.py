@@ -45,7 +45,7 @@ from libs import utility, web_service
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.9.15'
+__version__ = '1.9.16'
 
 
 class WSAA(web_service.WSBAse):
@@ -166,7 +166,7 @@ class WSAA(web_service.WSBAse):
         response = self.soap_connect(self.wsdl, 'loginCms', params)
 
         # Genero el archivo con la respuesta de AFIP
-        with open(self.ticket, 'w') as _:
+        with open(self.path, 'w') as _:
             _.write(response)
 
         # Parseo los elementos de la respuestsa XML de AFIP
