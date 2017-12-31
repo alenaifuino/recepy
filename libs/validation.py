@@ -16,13 +16,15 @@ Módulo con funciones auxiliares para la gestión de validación de input
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.6.3"
+__version__ = "0.6.4"
 
 
 def check_cuit(cuit):
     """
     Valida la Clave Unica de Identificación Tributaria (CUIT).
     Formato válido: xxyyyyyyyyz o xx-yyyyyyyy-z
+
+    Devuelve False si el CUIT no es válido
     """
     # Valido la longitud del cuit
     if not cuit:
@@ -94,10 +96,3 @@ def check_config(data):
     # Valida debug
     if not isinstance(data['debug'], bool):
         raise ValueError('El modo debug no es válido')
-
-    # Hago las validaciones de cada Web Service
-    if data['script'] == 'ws_sr_padron.py':
-        # Valido persona
-        if data['scope'] != 100:
-            if not check_cuit(data['taxpayer']):
-                raise ValueError('La clave "persona" no es válida')
