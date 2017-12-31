@@ -33,7 +33,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.1.12"
+__version__ = "1.1.13"
 
 
 # Archivo de configuración
@@ -204,14 +204,19 @@ def cli_parser(script, version):
     elif script == 'ws_sr_padron.py':
         if not args.scope:
             raise parser.error('Debe definir el Padrón AFIP a consultar')
-        elif args.table and not args.scope == 100:
-            raise parser.error('La opción --tabla sólo es válida con '
-                               '--alcance 100')
-        elif not args.table and args.scope == 100:
-            raise parser.error('Debe definir la tabla a consultar')
-        elif not args.taxpayer and args.scope != 100:
-            raise parser.error('La opción --persona debe definir el CUIT del '
-                               'contribuyente a consultar en el Padrón AFIP')
+        elif args.scope == 100:
+            if not args.option:
+                raise parser.error('Debe definir la tabla a consultar')
+            elif args.option not in A100_COLLECTIONS:
+                raise parser.error('La tabla suministrada no es válida')
+        elif args.scope != 100:
+            if not args.option:
+                raise parser.error('La opción --persona debe definir el CUIT '
+                                   'del contribuyente a consultar en el '
+                                   'Padrón AFIP')
+            elif not validation.check_cuit(args.option):
+                raise parser.error('El CUIT suministrado para consultar en el '
+                                   'Padrón no es válido')
     elif script == 'wsfe.py':
         if not args.type or not args.parameter:
             raise parser.error('Debe seleccionar un comprobante a autorizar o '
