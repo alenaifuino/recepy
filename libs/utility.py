@@ -17,23 +17,19 @@ Módulo con funciones auxiliares para la gestión de:
     - Diccionarios
 """
 
-import argparse
 import collections.abc
 import logging
 import sys
 from datetime import datetime, timedelta
-from socket import gaierror
 
-from ntplib import NTPClient, NTPException
-
-from config.config import A100_COLLECTIONS, CONFIG, DEBUG, WEB_SERVICES
+from config.config import CONFIG, DEBUG
 
 from . import validation
 
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.1.13"
+__version__ = "1.4.5"
 
 
 # Archivo de configuración
@@ -45,27 +41,23 @@ def get_config_data(args):
     # Args sobreescribe CONFIG
     data = {**CONFIG, **args}
 
+    # Actualizo debug
+    data['debug'] = data['debug'] or DEBUG
+
+    # Actualizo prod
+    data['prod'] = data['prod'] or CONFIG['prod']
+
     # Establezco el modo de conexión
     mode = 'prod' if data['prod'] else 'test'
 
-    # Corrijo certificado según modo de conexión, clave privada y frase secreta
-    if not data['certificate']:
-        data['certificate'] = CONFIG['certificate'][mode]
-
-    if not data['private_key']:
-        data['private_key'] = CONFIG['private_key']
-
-    if not data['passphrase']:
-        data['passphrase'] = CONFIG['passphrase']
+    # Actualizo el certificado según modo de conexión
+    data['certificate'] = data['certificate'][mode]
 
     # Actualizo WSDL de autenticación según modo de conexión
     data['wsdl'] = data['wsdl'][mode]
 
     # Actualizo WSDL del Web Service seǵun modo de conexión
     data['ws_wsdl'] = data['ws_wsdl'][data['web_service']][mode]
-
-    # Actualizo debug
-    data['debug'] = data['debug'] or DEBUG
 
     # Valido los datos del diccionario de configuración
     validation.check_config(data)
@@ -89,143 +81,195 @@ def print_config(data):
 
 
 # CLI
-def base_parser(script, version):
+def arg_gettext(text):
+    """
+    Traduce cadenas de argparse al español
+    """
+    messages = {
+        'positional arguments':
+        'argumentos posicionales',
+        'optional arguments':
+        'argumentos opcionales',
+        'show this help message and exit':
+        'mostrar esta ayuda y salir',
+        'invalid %(type)s value: %(value)r':
+        'valor inválido: %(value)r',
+        'invalid choice: %(value)r (choose from %(choices)s)':
+        'valor inválido %(value)r. Opciones posibles: %(choices)s',
+        #'%(prog)s: error: %(message)s\n': '%(%s)s\n',
+        'usage: ':
+        'uso: ',
+        'the following arguments are required: %s':
+        'argumentos requeridos: %s',
+        'expected one argument':
+        'se espera un valor para el parámetro',
+        'expected at least one argument':
+        'se espera al menos un valor para el parámetro',
+    }
+
+    if text in messages:
+        return messages[text]
+
+    return text
+
+
+def base_parser(version):
     """
     Parser a ser utilizado como base para cada parser de cada script
     """
-    # TODO: traducir mensajes internos de argparse al español
+    import argparse
 
     # Creo el parser de la línea de comandos
-    parser = argparse.ArgumentParser(add_help=False)
+    base = argparse.ArgumentParser()
 
     # Establezco los comandos soportados
-    parser.add_argument(
-        '--cuit',
-        help='define el CUIT que solicita el acceso')
-    parser.add_argument(
-        '--certificate',
-        help='define la ubicación del certificado vinculado al CUIT')
-    parser.add_argument(
-        '--private-key',
-        help='define la ubicación de la clave privada vinculada al CUIT')
-    parser.add_argument(
-        '--passphrase',
-        help='define la frase secreta de la clave privada',
-        default='')
-    parser.add_argument(
-        '--prod',
-        help='solicita el acceso al ambiente de producción',
+    base.add_argument(
+        '--produccion',
         action='store_true',
-        default=False)
-    parser.add_argument(
+        #default=False,
+        help='solicita acceso al ambiente de producción',
+        dest='prod')
+    base.add_argument(
         '--debug',
-        help='envía los mensajes de debug a stderr',
-        action='store_true')
-    parser.add_argument(
+        action='store_true',
+        help='muestra los mensajes de debug en stdout')
+    base.add_argument(
         '--version',
         action='version',
-        version='%(prog)s ' + version)
+        version='%(prog)s ' + version,
+        help='muestra la versión del programa y sale')
 
-    # Incluyo argumentos específicos por script
-    # TODO mover esto adentro de cada script
-    if script == 'wsaa.py':
-        parser.add_argument(
-            '--web-service',
-            help='define el Web Service al que se le solicita acceso',
-            choices=WEB_SERVICES)
-    elif script == 'ws_sr_padron.py':
-        # Creo el grupo de comandos mutuamente exclusivos
-        padron = parser.add_mutually_exclusive_group()
-
-        parser.add_argument(
-            '--alcance',
-            help='define el Padrón de AFIP a consultar',
-            type=int,
-            default=4,
-            dest='scope')
-        padron.add_argument(
-            '--persona',
-            help='define el CUIT a ser consultado en el padrón AFIP',
-            dest='option')
-        padron.add_argument(
-            '--tabla',
-            help='define la tabla a ser consultada en el padrón AFIP',
-            choices=A100_COLLECTIONS,
-            dest='option')
-    elif script == 'wsfe.py':
-        # Creo el grupo de comandos mutuamente exclusivos
-        wsfe = parser.add_mutually_exclusive_group()
-
-        wsfe.add_argument(
-            '--tipo',
-            help='define el tipo de comprobante a solicitar',
-            default='CAE',
-            choices=['CAE', 'CAEA'],
-            dest='type')
-        wsfe.add_argument(
-            '--parametro',
-            help='define el parámetro a ser consultado en las tablas de AFIP',
-            choices=[
-                'comprobante', 'concepto', 'documento', 'iva', 'monedas',
-                'opcional', 'tributos', 'puntos_venta', 'cotizacion',
-                'tipos_paises'],
-            dest='parameter'
-        )
-        parser.add_argument(
-            '--id-moneda',
-            help='define el ID de la moneda a consultar su cotización',
-            dest='currency_id'
-        )
-
-    return parser
+    return base
 
 
-def cli_parser(script, version):
+def wsaa_parser(base):
     """
-    Parsea la línea de comandos buscando argumentos requeridos y
-    soportados. Si los argumentos mandatorios fueron suministrados
-    devuelve el listado completo.
+    Comandos específicos para el script wsaa.py
+    """
+    required = base.add_argument_group('argumentos requeridos')
+
+    # Tupla con los Web Services soportados
+    web_services = tuple(ws for ws in CONFIG['ws_wsdl'])
+
+    # Establezco los comandos requeridos
+    required.add_argument(
+        '--web-service',
+        type=lambda x: validation.check_cli(
+            base, type='list', value=x, arg='web-service', list=web_services),
+        required=True,
+        help='Web Service para el que se solicita acceso. ' \
+             'Valores válidos: ' + ', '.join(web_services),
+        metavar='')
+
+    return base
+
+
+def ws_sr_padron_parser(base):
+    """
+    Comandos específicos para el script ws_sr_padron.py
+    """
+    # Creo el grupo de comandos mutuamente exclusivos
+    group = base.add_mutually_exclusive_group()
+
+    # Tupla con los alcances (padrones) habilitados
+    scope = (4, 5, 10, 100)
+
+    # Tablas del web service WS_SR_PADRON_A100
+    a100_collections = (
+        'SUPA.E_ORGANISMO_INFORMANTE',
+        'SUPA.TIPO_EMPRESA_JURIDICA',
+        'SUPA.E_PROVINCIA',
+        'SUPA.TIPO_DATO_ADICIONAL_DOMICILIO',
+        'PUC_PARAM.T_TIPO_LINEA_TELEFONICA',
+        'SUPA.TIPO_TELEFONO',
+        'SUPA.TIPO_COMPONENTE_SOCIEDAD',
+        'SUPA.TIPO_EMAIL',
+        'SUPA.TIPO_DOMICILIO',
+        'SUPA.E_ACTIVIDAD',
+        'PUC_PARAM.T_CALLE',
+        'PUC_PARAM.T_LOCALIDAD',
+    )
+
+    base.add_argument(
+        '--alcance',
+        default=4,
+        type=lambda x: validation.check_cli(
+            base, type='list', value=x, arg='alcance', list=scope),
+        required=True,
+        help='padrón de AFIP a ser consultado. ' \
+             'Valores válidos: ' + ', '.join(scope),
+        dest='scope')
+    group.add_argument(
+        '--persona',
+        type=lambda x: validation.check_cli(
+            base, type='cuit', value=x, arg='persona'),
+        help='CUIT a ser consultada en el padrón de la AFIP',
+        dest='option')
+    group.add_argument(
+        '--tabla',
+        type=lambda x: validation.check_cli(
+            base, type='list', value=x, arg='tabla', list=a100_collections),
+        help='tabla a ser consultada en el padrón de la AFIP. ' \
+             'Valores válidos: ' + ', '.join(a100_collections),
+        dest='option')
+
+    return base
+
+
+def wsfe_parser(base):
+    """
+    Comandos específicos para el script wsfe.py
+    """
+    # Creo el grupo de comandos mutuamente exclusivos
+    group = base.add_mutually_exclusive_group()
+
+    # Tupla de tipos de comprobantes habilitados
+    voucher_type = ('CAE', 'CAEA')
+
+    # Tupla de parámetros habilitados
+    params = ('comprobante', 'concepto', 'documento', 'iva', 'monedas',
+              'opcional', 'tributos', 'puntos_venta', 'cotizacion',
+              'tipos_paises')
+
+    group.add_argument(
+        '--comprobante',
+        default='CAE',
+        type=lambda x: validation.check_cli(
+            base, type='list', value=x, arg='comprobante', list=voucher_type),
+        help='tipo de comprobante a ser autorizado. ' \
+             'Valores válidos: ' + ', '.join(voucher_type),
+        dest='voucher')
+    group.add_argument(
+        '--parametro',
+        type=lambda x: validation.check_cli(
+            base, type='list', value=x, arg='parametro', list=params),
+        help='parámetro a ser consultado en las tablas de AFIP. ' \
+             'Valores válidos: ' + ', '.join(params),
+        dest='parameter')
+    base.add_argument(
+        '--id-moneda',
+        help='ID de la moneda a consultar su cotización. Sólo es válido con ' \
+             'el parámetro "monedas"',
+        dest='currency_id')
+
+    return base
+
+
+def cli_parser(version):
+    """
+    Parsea la línea de comandos buscando argumentos requeridos y soportados.
     """
     # Obtengo el parser base
-    base = base_parser(script, version)
+    base = base_parser(version)
 
-    # Creo el parser a utilizar en el script
-    parser = argparse.ArgumentParser(parents=[base])
+    # Llamo al parser correspondiente según el script
+    parser = getattr(sys.modules[__name__], '%s_parser' % base.prog[:-3])(base)
 
     # Parseo la línea de comandos
     args = parser.parse_args()
 
-    # Establezco los chequeos de la línea de comando según el script
-    # TODO mover esto adentro de cada script
-    if script == 'wsaa.py':
-        if not args.web_service:
-            raise parser.error('Debe definir el Web Service al que quiere '
-                               'solicitar acceso')
-    elif script == 'ws_sr_padron.py':
-        if not args.scope:
-            raise parser.error('Debe definir el Padrón AFIP a consultar')
-        elif args.scope == 100:
-            if not args.option:
-                raise parser.error('Debe definir la tabla a consultar')
-            elif args.option not in A100_COLLECTIONS:
-                raise parser.error('La tabla suministrada no es válida')
-        elif args.scope != 100:
-            if not args.option:
-                raise parser.error('La opción --persona debe definir el CUIT '
-                                   'del contribuyente a consultar en el '
-                                   'Padrón AFIP')
-            elif not validation.check_cuit(args.option):
-                raise parser.error('El CUIT suministrado para consultar en el '
-                                   'Padrón no es válido')
-    elif script == 'wsfe.py':
-        if not args.type or not args.parameter:
-            raise parser.error('Debe seleccionar un comprobante a autorizar o '
-                               'un parámetro a consultar')
-        if args.parameter == 'cotizacion' and not args.currency_id:
-            raise parser.error('Debe definir el ID de la moneda a cotizar')
-
     # Incluyo el nombre del script como argumento
-    args.script = script
+    args.script = base.prog
 
     return vars(args)
 
@@ -235,9 +279,13 @@ def ntp_time(ntp_server):
     """
     Devuelve timestamp de la fecha y hora obtenida del servidor de tiempo
     """
+    from ntplib import NTPClient, NTPException
+    from socket import gaierror
+
     ntp_server_tuple = (
         'ar.pool.ntp.org',
-        'south-america.pool.ntp.org',)
+        'south-america.pool.ntp.org',
+    )
 
     # Genero el objeto NTPclient
     client = NTPClient()
