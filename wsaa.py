@@ -30,22 +30,16 @@ http://www.afip.gov.ar/ws/WSAA/Especificacion_Tecnica_WSAA_1.2.2.pdf
 # pyafipws - Sistemas Agiles - versión 2.11c 2017-03-14
 
 import logging
-import random
-from base64 import b64encode
 from datetime import timedelta
-from subprocess import PIPE, Popen
 
-from dateutil import parser
 from lxml import builder, etree
-from requests import exceptions as requests_exceptions
-from zeep import exceptions as zeep_exceptions
 
 from libs import utility, web_service
 
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.9.17'
+__version__ = '2.1.3'
 
 
 class WSAA(web_service.WSBAse):
@@ -54,13 +48,14 @@ class WSAA(web_service.WSBAse):
     y Autorización de AFIP
     """
 
-    def __init__(self, config):
-        super().__init__(config['debug'], config['ws_wsdl'],
-                         config['web_service'], 'ta.xml')
-        self.prod = config['prod']
-        self.certificate = config['certificate']
-        self.private_key = config['private_key']
-        self.wsdl = config['wsdl']
+    def __init__(self, conf):
+        super().__init__(conf['debug'], conf['ws_wsdl'], conf['web_service'],
+                         'ta.xml')
+        self.prod = conf['prod']
+        self.sdn = conf['dn']
+        self.certificate = conf['certificate']
+        self.private_key = conf['private_key']
+        self.wsdl = conf['wsdl']
         self.expiration_time = None
         self.path = None
 
@@ -68,15 +63,20 @@ class WSAA(web_service.WSBAse):
         """
         Crea un Ticket de Requerimiento de Acceso (TRA)
         """
+        import random
+
+        # Establezco el tag source
+        source = self.sdn
+
         # Establezco el tipo de conexión para usar en el tag destination
-        dcn = 'wsaa' if self.prod == 'prod' else 'wsaahomo'
-        dest = 'cn=' + dcn + ',o=afip,c=ar,serialNumber=CUIT 33693450239'
+        dcn = 'wsaa' if self.prod else 'wsaahomo'
+        dest = 'cn={},o=afip,c=ar,serialNumber=CUIT 33693450239'.format(dcn)
 
         # Obtengo la fechahora actual
         current_time = utility.get_datetime()
 
         # Establezco los formatos de tiempo para los tags generationTime y
-        # expirationTime (+ 30' de generationTime) en formato ISO 8601
+        # expirationTime (generationTime + 15') en formato ISO 8601
         generation_time = current_time.isoformat()
         expiration_time = (current_time + timedelta(minutes=15)).isoformat()
 
@@ -85,20 +85,24 @@ class WSAA(web_service.WSBAse):
 
         # Creo la estructura del ticket de acceso según especificación técnica
         # de AFIP en formato bytes
+        xml = builder.E.loginTicketRequest(
+            builder.E.header(
+                builder.E.destination(dest),
+                builder.E.uniqueId(str(random.getrandbits(32))),
+                builder.E.generationTime(str(generation_time) + timezone),
+                builder.E.expirationTime(str(expiration_time) + timezone),
+            ),
+            builder.E.service(self.web_service),
+            version='1.0')
+
+        # Si source no es un elemento vacío entonces lo incorporo como primer
+        # elemento del tag header
+        if source:
+            xml.find('.//header').insert(0, builder.E.source(source))
+
+        # Convierto el XML a string con encoding UTF-8
         tra = etree.tostring(
-            builder.E.loginTicketRequest(
-                builder.E.header(
-                    #builder.E.source(), # campo opcional
-                    builder.E.destination(dest),
-                    builder.E.uniqueId(str(random.randint(0, 4294967295))),
-                    builder.E.generationTime(str(generation_time) + timezone),
-                    builder.E.expirationTime(str(expiration_time) + timezone),
-                ),
-                builder.E.service(self.web_service),
-                version='1.0'),
-            pretty_print=True,
-            xml_declaration=True,
-            encoding='UTF-8')
+            xml, pretty_print=True, xml_declaration=True, encoding='UTF-8')
 
         # Muestro el TRA si estoy en modo debug
         if self.debug:
@@ -114,6 +118,9 @@ class WSAA(web_service.WSBAse):
         certificado X.509 del contribuyente según especificación técnica de
         AFIP
         """
+        from base64 import b64encode
+        from subprocess import PIPE, Popen
+
         # Llamo a openssl y genero el CMS
         cms, error = Popen(
             [
@@ -147,11 +154,16 @@ class WSAA(web_service.WSBAse):
         # Armo el árbol del string que recibo
         tree = etree.fromstring(bytes(xml, encoding))
 
+        # Diccionario con el nombre de los elementos en la respuesta y su
+        # respectivo atributo
+        elements = {
+            'token': 'token',
+            'sign': 'sign',
+            'expirationTime': 'expiration_time'
+        }
+
         # Actualizo los valores de los atributos token, sign y expiration_time
-        for element in ['token', 'sign', 'expirationTime']:
-            # patch para convertir expirationTime a formato snake... tal vez
-            # más adelante justifique hacer una función camelCase a snake_case
-            attr = element if element != 'expirationTime' else 'expiration_time'
+        for element, attr in elements.items():
             setattr(self, attr, tree.find('.//' + element).text)
 
     def __login_cms(self, cms):
@@ -177,6 +189,9 @@ class WSAA(web_service.WSBAse):
         Obtiene el ticket de acceso del directorio local si es válido o
         solicita uno nuevo al Web Service de AFIP
         """
+        from requests import exceptions as requests_exceptions
+        from zeep import exceptions as zeep_exceptions
+
         # Obtengo el ticket del disco local
         self.path = self.get_output_path(name=self.web_service)
 
@@ -223,18 +238,17 @@ def valid_tra(ticket_time):
     """
     Verifica si el ticket de acceso está vigente
     """
-    # La fechahora del ticket no está establecido
+    from dateutil import parser
+
+    # La fechahora del ticket no está establecida
     if not ticket_time:
         return False
 
-    # Defino un delta el cuál sustraigo de expiration_time para evitar
-    # situaciones donde se de como válido un ticket pero este expire pocos
-    # segundos después, ocasionando que el ticket no sea válido por haber
-    # vencido entre el momento que se validó y el que fue utilizado
-    delta = 120
-
-    # Convierto el string ticket_time en formato datetime y sustraigo delta
-    expiration_time = parser.parse(ticket_time) - timedelta(seconds=delta)
+    # Convierto el string ticket_time en formato datetime y sustraigo un delta
+    # para evitar situaciones donde se de como válido un ticket pero este
+    # expire pocos segundos después, ocasionando que el ticket no sea válido
+    # por haber vencido entre el momento que se validó y el que fue utilizado
+    expiration_time = parser.parse(ticket_time) - timedelta(minutes=2)
 
     # Obtengo la fechahora actual
     time = utility.get_datetime()
@@ -281,8 +295,13 @@ def main():
     """
     Función utilizada para la ejecución del script por línea de comandos
     """
+    import gettext
+
+    # Obtengo las traducciones al español
+    gettext.gettext = utility.arg_gettext
+
     # Obtengo los parámetros pasados por línea de comandos
-    args = utility.cli_parser(__file__, __version__)
+    args = utility.cli_parser(__version__)
 
     # Obtengo los datos de configuración
     try:
@@ -290,7 +309,7 @@ def main():
     except ValueError as error:
         raise SystemExit(error)
 
-    # Muestro las opciones de configuración via stdouts
+    # Muestro las opciones de configuración via stdout
     if config_data['debug']:
         utility.print_config(config_data)
 
