@@ -29,7 +29,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.4.5"
+__version__ = "1.4.6"
 
 
 # Archivo de configuración
@@ -86,25 +86,18 @@ def arg_gettext(text):
     Traduce cadenas de argparse al español
     """
     messages = {
-        'positional arguments':
-        'argumentos posicionales',
-        'optional arguments':
-        'argumentos opcionales',
-        'show this help message and exit':
-        'mostrar esta ayuda y salir',
-        'invalid %(type)s value: %(value)r':
-        'valor inválido: %(value)r',
+        'positional arguments': 'argumentos posicionales',
+        'optional arguments': 'argumentos opcionales',
+        'show this help message and exit': 'mostrar esta ayuda y salir',
+        'invalid %(type)s value: %(value)r': 'valor inválido: %(value)r',
         'invalid choice: %(value)r (choose from %(choices)s)':
-        'valor inválido %(value)r. Opciones posibles: %(choices)s',
-        #'%(prog)s: error: %(message)s\n': '%(%s)s\n',
-        'usage: ':
-        'uso: ',
+            'valor inválido %(value)r. Opciones posibles: %(choices)s',
+        'usage: ': 'uso: ',
         'the following arguments are required: %s':
-        'argumentos requeridos: %s',
-        'expected one argument':
-        'se espera un valor para el parámetro',
+            'argumentos requeridos: %s',
+        'expected one argument': 'se espera un valor para el parámetro',
         'expected at least one argument':
-        'se espera al menos un valor para el parámetro',
+            'se espera al menos un valor para el parámetro',
     }
 
     if text in messages:
@@ -155,9 +148,9 @@ def wsaa_parser(base):
     required.add_argument(
         '--web-service',
         type=lambda x: validation.check_cli(
-            base, type='list', value=x, arg='web-service', list=web_services),
+            base, type='list', value=x, name='web-service', list=web_services),
         required=True,
-        help='Web Service para el que se solicita acceso. ' \
+        help='Web Service para el que se solicita acceso. '
              'Valores válidos: ' + ', '.join(web_services),
         metavar='')
 
@@ -175,40 +168,34 @@ def ws_sr_padron_parser(base):
     scope = (4, 5, 10, 100)
 
     # Tablas del web service WS_SR_PADRON_A100
-    a100_collections = (
-        'SUPA.E_ORGANISMO_INFORMANTE',
-        'SUPA.TIPO_EMPRESA_JURIDICA',
-        'SUPA.E_PROVINCIA',
-        'SUPA.TIPO_DATO_ADICIONAL_DOMICILIO',
-        'PUC_PARAM.T_TIPO_LINEA_TELEFONICA',
-        'SUPA.TIPO_TELEFONO',
-        'SUPA.TIPO_COMPONENTE_SOCIEDAD',
-        'SUPA.TIPO_EMAIL',
-        'SUPA.TIPO_DOMICILIO',
-        'SUPA.E_ACTIVIDAD',
-        'PUC_PARAM.T_CALLE',
-        'PUC_PARAM.T_LOCALIDAD',
-    )
+    a100_collections = ('SUPA.E_ORGANISMO_INFORMANTE',
+                        'SUPA.TIPO_EMPRESA_JURIDICA', 'SUPA.E_PROVINCIA',
+                        'SUPA.TIPO_DATO_ADICIONAL_DOMICILIO',
+                        'PUC_PARAM.T_TIPO_LINEA_TELEFONICA',
+                        'SUPA.TIPO_TELEFONO', 'SUPA.TIPO_COMPONENTE_SOCIEDAD',
+                        'SUPA.TIPO_EMAIL', 'SUPA.TIPO_DOMICILIO',
+                        'SUPA.E_ACTIVIDAD', 'PUC_PARAM.T_CALLE',
+                        'PUC_PARAM.T_LOCALIDAD')
 
     base.add_argument(
         '--alcance',
         default=4,
         type=lambda x: validation.check_cli(
-            base, type='list', value=x, arg='alcance', list=scope),
+            base, type='list', value=x, name='alcance', list=scope),
         required=True,
-        help='padrón de AFIP a ser consultado. ' \
+        help='padrón de AFIP a ser consultado. '
              'Valores válidos: ' + ', '.join(scope),
         dest='scope')
     group.add_argument(
         '--persona',
         type=lambda x: validation.check_cli(
-            base, type='cuit', value=x, arg='persona'),
+            base, type='cuit', value=x, name='persona'),
         help='CUIT a ser consultada en el padrón de la AFIP',
         dest='option')
     group.add_argument(
         '--tabla',
         type=lambda x: validation.check_cli(
-            base, type='list', value=x, arg='tabla', list=a100_collections),
+            base, type='list', value=x, name='tabla', list=a100_collections),
         help='tabla a ser consultada en el padrón de la AFIP. ' \
              'Valores válidos: ' + ', '.join(a100_collections),
         dest='option')
@@ -235,14 +222,14 @@ def wsfe_parser(base):
         '--comprobante',
         default='CAE',
         type=lambda x: validation.check_cli(
-            base, type='list', value=x, arg='comprobante', list=voucher_type),
+            base, type='list', value=x, name='comprobante', list=voucher_type),
         help='tipo de comprobante a ser autorizado. ' \
              'Valores válidos: ' + ', '.join(voucher_type),
         dest='voucher')
     group.add_argument(
         '--parametro',
         type=lambda x: validation.check_cli(
-            base, type='list', value=x, arg='parametro', list=params),
+            base, type='list', value=x, name='parametro', list=params),
         help='parámetro a ser consultado en las tablas de AFIP. ' \
              'Valores válidos: ' + ', '.join(params),
         dest='parameter')

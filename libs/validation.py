@@ -16,7 +16,7 @@ Módulo con funciones auxiliares para la gestión de validación de input
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.7.9"
+__version__ = "0.7.10"
 
 
 def check_cuit(cuit):
@@ -110,13 +110,13 @@ def check_cli(parser, **kwargs):
         try:
             check_file(kwargs['value'])
         except ValueError as message:
-            raise parser.error(kwargs['arg'] + ': ' + message)
+            raise parser.error(kwargs['name'] + ': ' + message)
     elif kwargs['type'] == 'str':
         if not isinstance(kwargs['value'], str):
-            raise parser.error(kwargs['arg'] + ': no es una cadena de texto')
+            raise parser.error(kwargs['name'] + ': no es una cadena de texto')
     elif kwargs['type'] == 'list':
         if kwargs['value'] not in kwargs['list']:
-            raise parser.error(kwargs['arg'] + ': no es un valor válido. '
+            raise parser.error(kwargs['name'] + ': no es un valor válido. '
                                'Valores válidos: ' + ', '.join(kwargs['list']))
 
     return kwargs['value']
