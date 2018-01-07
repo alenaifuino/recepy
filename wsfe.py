@@ -68,7 +68,7 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.5.4'
+__version__ = '0.5.9'
 
 
 class WSFE(web_service.WSBAse):
@@ -87,6 +87,8 @@ class WSFE(web_service.WSBAse):
         """
         Método genérico que realiza la solicitud según el req_type definido
         """
+        from zeep import exceptions
+
         # Valido que el servicio de AFIP este funcionando
         if self.dummy('FEDummy'):
             raise SystemExit('El servicio de AFIP no se encuentra disponible')
@@ -97,8 +99,8 @@ class WSFE(web_service.WSBAse):
         # Formateo el tipo de requerimiento
         req_type = req_type.upper()
 
-        # Establezco el nombre del servicio que será llamado
-        service_name = 'FE' + req_type + 'Solicitar'
+        # Establezco el nombre del método que será llamado
+        method = 'FE' + req_type + 'Solicitar'
 
         # Defino los parámetros de autenticación
         params = {
@@ -180,8 +182,12 @@ class WSFE(web_service.WSBAse):
         params.update(extra)
 
         # Obtengo la respuesta del WSDL de AFIP
-        response = self.soap_connect(self.ws_wsdl, service_name, params)
+        try:
+            response = self.soap_connect(self.ws_wsdl, method, params)
+        except exceptions.Fault as error:
+            raise SystemExit('Error: {} {}'.format(error.code, error.message))
 
+        '''
         {
             'FECAEASinMovimientoInformar': {
                 'PtoVta': '',
@@ -264,13 +270,16 @@ class WSFE(web_service.WSBAse):
             },
             'FECompTotXRequest': ''
         }
+        '''
 
     def __request_param(self):
         """
         Método genérico que realiza la solicitud al método de AFIP definido
         según service_name
         """
-        service_names = {
+        from zeep import exceptions
+
+        methods = {
             'comprobante': 'FEParamGetTiposCbte',
             'concepto': 'FEParamGetTiposConcepto',
             'documento': 'FEParamGetTiposDoc',
@@ -284,11 +293,11 @@ class WSFE(web_service.WSBAse):
         }
 
         # Valido el nombre del método solicitado y lo asigno si es válido
-        if self.config['parameter'] not in service_names.keys():
+        if self.option not in methods.keys():
             raise SystemExit('El parámetro no está soportado por el Web '
                              'Service de Factura Electrónica')
         else:
-            service_name = service_names[self.config['parameter']]
+            method = methods[self.option]
 
         # Valido que el servicio de AFIP esté funcionando
         if self.dummy('FEDummy'):
@@ -307,17 +316,20 @@ class WSFE(web_service.WSBAse):
         }
 
         # Agrego los parámetros adicionales según el método solicitado
-        if service_name == 'FEParamGetCotizacion':
+        if method == 'FEParamGetCotizacion':
             params.update({'MonId': self.config['currency_id']})
 
         # Obtengo la respuesta del WSDL de AFIP
-        response = self.soap_connect(self.ws_wsdl, service_name, params)
+        try:
+            response = self.soap_connect(self.ws_wsdl, method, params)
+        except exceptions.Fault as error:
+            raise SystemExit('Error: {} {}'.format(error.code, error.message))
 
         # Lo transformo a JSON
         json_response = dumps(response, indent=2, ensure_ascii=False)
 
         # Genero el archivo con la respuesta de AFIP
-        output = self.get_output_path(name=self.config['parameter'])
+        output = self.get_output_path(name=self.option)
         with open(output, 'w') as file:
             file.write(json_response)
 
@@ -325,13 +337,14 @@ class WSFE(web_service.WSBAse):
 
     def request(self):
         """
-        Método wrapper que define a qué método se llama
+        Wrapper que define a qué método se llama dependiendo de la opción
+        seleccionada
         """
         print(self.option)
         if self.option == 'parameter':
             self.__request_param()
         elif self.option == 'request':
-            self.__request_param()
+            self.__request_fe('')
 
 
 def main():
