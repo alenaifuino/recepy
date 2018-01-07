@@ -47,7 +47,7 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.9.2'
+__version__ = '0.9.5'
 
 
 class WSSRPADRON(web_service.WSBAse):
@@ -64,13 +64,15 @@ class WSSRPADRON(web_service.WSBAse):
                          config['web_service'], '<string>.json')
         self.cuit = config['cuit']
         self.scope = config['scope']
-        self.option = config['option']
+        self.option = config['table'] if self.scope == 100 else config['person']
         self.path = None
 
     def get_scope_data(self):
         """
         Método genérico que obtiene el método solicitado en option
         """
+        from zeep import exceptions
+
         # Valido que el servicio de AFIP esté funcionando
         if self.dummy():
             raise SystemExit('El servicio de AFIP no se encuentra disponible')
@@ -86,15 +88,18 @@ class WSSRPADRON(web_service.WSBAse):
         }
 
         # Defino el método dependiendo del alcance seleccionado
-        if self.scope != 100:
-            method = 'getPersona'
-            params.update({'idPersona': self.option})
-        else:
+        if self.scope == 100:
             method = 'getParameterCollectionByName'
             params.update = ({'collectionName': self.option})
+        else:
+            method = 'getPersona'
+            params.update({'idPersona': self.option})
 
         # Obtengo la respuesta del WSDL de AFIP
-        response = self.soap_connect(self.ws_wsdl, method, params)
+        try:
+            response = self.soap_connect(self.ws_wsdl, method, params)
+        except exceptions.Fault as error:
+            raise SystemExit('Error: {} {}'.format(error.code, error.message))
 
         # Recorro el diccionario de respuesta y convierto los items del tipo
         # datetime a string
@@ -116,10 +121,10 @@ def main():
     Función utilizada para la ejecución del script por línea de comandos
     """
     # Obtengo los parámetros pasados por línea de comandos
-    args = utility.cli_parser(__file__, __version__)
+    args = utility.cli_parser(__version__)
 
     # Establezco el nombre del web service según el alcance
-    args['web_service'] = 'ws_sr_padron_a' + str(args['scope'])
+    args['web_service'] = args['prog'][:-3] + '_a' + args['scope']
 
     # Obtengo los datos de configuración
     try:
