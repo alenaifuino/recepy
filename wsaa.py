@@ -39,7 +39,7 @@ from libs import utility, web_service
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '2.1.3'
+__version__ = '2.1.5'
 
 
 class WSAA(web_service.WSBAse):
@@ -228,8 +228,7 @@ class WSAA(web_service.WSBAse):
                 raise SystemExit('No se pudo establecer conexión con el '
                                  'Web Service WSAA de AFIP')
             except zeep_exceptions.Fault as error:
-                raise SystemExit('Error: {} - {}'.format(
-                    error.code, error.message))
+                raise SystemExit('Error: {} {}'.format(error.code, error.message))
 
         return (self.token, self.sign)
 
@@ -295,11 +294,6 @@ def main():
     """
     Función utilizada para la ejecución del script por línea de comandos
     """
-    import gettext
-
-    # Obtengo las traducciones al español
-    gettext.gettext = utility.arg_gettext
-
     # Obtengo los parámetros pasados por línea de comandos
     args = utility.cli_parser(__version__)
 
