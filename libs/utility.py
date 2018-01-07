@@ -29,7 +29,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.7.2"
+__version__ = "1.7.3"
 
 
 # Archivo de configuración
@@ -280,7 +280,12 @@ def cli_parser(version):
 
     # Realizo las validaciones según el script que no puedo hacer via argparse
     # y devuelvo los comandos pasados por línea de comando
-    return validation.check_parser(parser)
+    args = validation.check_parser(parser)
+
+    # Establezco el nombre del web service según el alcance
+    args['web_service'] = args['prog'][:-3]
+
+    return args
 
 
 # Fechas

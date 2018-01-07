@@ -47,7 +47,7 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.9.5'
+__version__ = '0.9.6'
 
 
 class WSSRPADRON(web_service.WSBAse):
@@ -123,8 +123,8 @@ def main():
     # Obtengo los parámetros pasados por línea de comandos
     args = utility.cli_parser(__version__)
 
-    # Establezco el nombre del web service según el alcance
-    args['web_service'] = args['prog'][:-3] + '_a' + args['scope']
+    # Actualizo el nombre del web service según el alcance
+    args['web_service'] += '_a' + args['scope']
 
     # Obtengo los datos de configuración
     try:
