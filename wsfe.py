@@ -60,12 +60,7 @@ Especificación Técnica v2.10 en:
 http://www.afip.gob.ar/fe/documentos/manual_desarrollador_COMPG_v2_10.pdf
 """
 
-import logging
-import sys
-from datetime import datetime
 from json import dumps
-
-from zeep import helpers
 
 from libs import utility, web_service
 from wsaa import WSAA
@@ -73,19 +68,20 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.3.2'
+__version__ = '0.5.4'
 
 
-class WSFE(web_service.BaseWebService):
+class WSFE(web_service.WSBAse):
     """
     Clase que se usa de interfaz para el Web Service de Factura Electrónica
     de AFIP
     """
     def __init__(self, config):
-        self.config = config
-        self.token = None
-        self.sign = None
-        super().__init__(self.config, '<string>.json')
+        super().__init__(config['debug'], config['ws_wsdl'],
+                         config['web_service'], '<string>.json')
+        self.cuit = config['cuit']
+        self.option = config['parameter']
+        self.path = None
 
     def __request_fe(self, req_type):
         """
@@ -94,6 +90,9 @@ class WSFE(web_service.BaseWebService):
         # Valido que el servicio de AFIP este funcionando
         if self.dummy('FEDummy'):
             raise SystemExit('El servicio de AFIP no se encuentra disponible')
+
+        # Establezco el lugar donde se guardarán los datos
+        self.path = self.get_output_path(name=self.option)
 
         # Formateo el tipo de requerimiento
         req_type = req_type.upper()
@@ -106,7 +105,7 @@ class WSFE(web_service.BaseWebService):
             'Auth': {
                 'Token': self.token,
                 'Sign': self.sign,
-                'Cuit': self.config['cuit']
+                'Cuit': self.cuit
             }
         }
 
@@ -181,8 +180,7 @@ class WSFE(web_service.BaseWebService):
         params.update(extra)
 
         # Obtengo la respuesta del WSDL de AFIP
-        response = self.soap_connect(
-            self.config['ws_wsdl'], service_name, params)
+        response = self.soap_connect(self.ws_wsdl, service_name, params)
 
         {
             'FECAEASinMovimientoInformar': {
@@ -296,12 +294,15 @@ class WSFE(web_service.BaseWebService):
         if self.dummy('FEDummy'):
             raise SystemExit('El servicio de AFIP no se encuentra disponible')
 
+        # Establezco el lugar donde se guardarán los datos
+        self.path = self.get_output_path(name=self.option)
+
         # Defino los parámetros de autenticación
         params = {
             'Auth': {
                 'Token': self.token,
                 'Sign': self.sign,
-                'Cuit': self.config['cuit']
+                'Cuit': self.cuit
             }
         }
 
@@ -310,8 +311,7 @@ class WSFE(web_service.BaseWebService):
             params.update({'MonId': self.config['currency_id']})
 
         # Obtengo la respuesta del WSDL de AFIP
-        response = self.soap_connect(
-            self.config['ws_wsdl'], service_name, params)
+        response = self.soap_connect(self.ws_wsdl, service_name, params)
 
         # Lo transformo a JSON
         json_response = dumps(response, indent=2, ensure_ascii=False)
@@ -323,16 +323,14 @@ class WSFE(web_service.BaseWebService):
 
         return json_response
 
-    def request(self, option, ticket_data):
+    def request(self):
         """
-        Método wrapper que define a qué método se llama en base a option
+        Método wrapper que define a qué método se llama
         """
-        self.token = ticket_data['token']
-        self.sign = ticket_data['sign']
-
-        if option == 'parameter':
+        print(self.option)
+        if self.option == 'parameter':
             self.__request_param()
-        elif option == 'request':
+        elif self.option == 'request':
             self.__request_param()
 
 
@@ -341,7 +339,7 @@ def main():
     Función utilizada para la ejecución del script por línea de comandos
     """
     # Obtengo los parámetros pasados por línea de comandos
-    args = utility.cli_parser(__file__, __version__)
+    args = utility.cli_parser(__version__)
 
     # Obtengo los datos de configuración
     try:
@@ -351,35 +349,22 @@ def main():
 
     # Muestro las opciones de configuración via stdout
     if config_data['debug']:
-        logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-        logging.info('|============  Configuración  ============')
-        logging.info('| Certificado:   %s', config_data['certificate'])
-        logging.info('| Clave Privada: %s', config_data['private_key'])
-        logging.info('| Frase Secreta: %s',
-                     '******' if config_data['passphrase'] else None)
-        logging.info('| WSAA WSDL:     %s', config_data['wsdl'])
-        logging.info('| WS:            %s', config_data['web_service'])
-        logging.info('| WS WSDL:       %s', config_data['ws_wsdl'])
-        logging.info('|=================  ---  =================')
-
-    # Instancio WSFE para obtener un objeto de Factura Electrónica AFIP
-    voucher = WSFE(config_data)
+        utility.print_config(config_data)
 
     # Instancio WSAA para obtener un objeto de autenticación y autorización
     wsaa = WSAA(config_data)
 
-    # Obtengo el ticket de autorización de AFIP
-    ticket_data = wsaa.get_ticket()
+    # Instancio WSFE para obtener un objeto de Factura Electrónica AFIP
+    voucher = WSFE(config_data)
 
-    # Defino el método de conexión
-    option = 'parameter' if config_data['parameter'] else 'request'
+    # Obtengo el ticket de autorización de AFIP
+    voucher.token, voucher.sign = wsaa.get_ticket()
 
     # Obtengo los datos solicitados
-    voucher.request(option, ticket_data)
+    voucher.request()
 
     # Imprimo la ubicación del archivo de salida
-    print('Respuesta AFIP en: {}'.format(
-        voucher.get_output_path(name=config_data['parameter'])))
+    print('Respuesta AFIP en: {}'.format(voucher.path))
 
 
 if __name__ == '__main__':
