@@ -29,7 +29,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.4.6"
+__version__ = "1.7.2"
 
 
 # Archivo de configuración
@@ -81,7 +81,7 @@ def print_config(data):
 
 
 # CLI
-def arg_gettext(text):
+def arg_gettext(message):
     """
     Traduce cadenas de argparse al español
     """
@@ -96,30 +96,36 @@ def arg_gettext(text):
         'the following arguments are required: %s':
             'argumentos requeridos: %s',
         'expected one argument': 'se espera un valor para el parámetro',
+        'expected at most one argument': 'se espera como máximo un argumento',
         'expected at least one argument':
             'se espera al menos un valor para el parámetro',
+        'one of the arguments %s is required':
+            'al menos uno de los argumentos %s es requerido',
+        'not allowed with argument %s': 'no permitido con el argumento %s'
     }
 
-    if text in messages:
-        return messages[text]
+    if message in messages:
+        return messages[message]
 
-    return text
+    return message
 
 
 def base_parser(version):
     """
-    Parser a ser utilizado como base para cada parser de cada script
+    Parser a ser utilizado como base para cada script
     """
     import argparse
 
     # Creo el parser de la línea de comandos
-    base = argparse.ArgumentParser()
+    base = argparse.ArgumentParser(
+        formatter_class=argparse.RawTextHelpFormatter)
 
-    # Establezco los comandos soportados
+    # Establezco los comandos soportados. prog es utilizado para definir el
+    # nombre del script que se está ejecutando por eso suprimo la salida de
+    # help
     base.add_argument(
         '--produccion',
         action='store_true',
-        #default=False,
         help='solicita acceso al ambiente de producción',
         dest='prod')
     base.add_argument(
@@ -131,6 +137,10 @@ def base_parser(version):
         action='version',
         version='%(prog)s ' + version,
         help='muestra la versión del programa y sale')
+    base.add_argument(
+        '--prog',
+        default=base.prog,
+        help=argparse.SUPPRESS)
 
     return base
 
@@ -139,6 +149,7 @@ def wsaa_parser(base):
     """
     Comandos específicos para el script wsaa.py
     """
+    # Establezco un grupo de argumentos requeridos
     required = base.add_argument_group('argumentos requeridos')
 
     # Tupla con los Web Services soportados
@@ -150,8 +161,8 @@ def wsaa_parser(base):
         type=lambda x: validation.check_cli(
             base, type='list', value=x, name='web-service', list=web_services),
         required=True,
-        help='Web Service para el que se solicita acceso. '
-             'Valores válidos: ' + ', '.join(web_services),
+        help='web service para el que se solicita acceso\n'
+             'valores soportados:\n\t' + '\n\t'.join(web_services),
         metavar='')
 
     return base
@@ -161,11 +172,14 @@ def ws_sr_padron_parser(base):
     """
     Comandos específicos para el script ws_sr_padron.py
     """
-    # Creo el grupo de comandos mutuamente exclusivos
-    group = base.add_mutually_exclusive_group()
+    # Establezco un grupo de argumentos requeridos
+    required = base.add_argument_group('argumentos requeridos')
+
+    # Establezco el grupo de argumentos auto exclusivos
+    exclusive = required.add_mutually_exclusive_group(required=True)
 
     # Tupla con los alcances (padrones) habilitados
-    scope = (4, 5, 10, 100)
+    scope = ('4', '5', '10', '100')
 
     # Tablas del web service WS_SR_PADRON_A100
     a100_collections = ('SUPA.E_ORGANISMO_INFORMANTE',
@@ -177,28 +191,34 @@ def ws_sr_padron_parser(base):
                         'SUPA.E_ACTIVIDAD', 'PUC_PARAM.T_CALLE',
                         'PUC_PARAM.T_LOCALIDAD')
 
-    base.add_argument(
+    required.add_argument(
+        '--cuit',
+        type=lambda x: validation.check_cli(
+            base, type='cuit', value=x, name='cuit'),
+        required=True,
+        help='CUIT que solicita el acceso al padrón de la AFIP')
+    required.add_argument(
         '--alcance',
-        default=4,
         type=lambda x: validation.check_cli(
             base, type='list', value=x, name='alcance', list=scope),
         required=True,
-        help='padrón de AFIP a ser consultado. '
-             'Valores válidos: ' + ', '.join(scope),
+        help='padrón de AFIP a ser consultado\n'
+             'valores soportados: ' + ', '.join(scope),
         dest='scope')
-    group.add_argument(
+    exclusive.add_argument(
         '--persona',
         type=lambda x: validation.check_cli(
             base, type='cuit', value=x, name='persona'),
         help='CUIT a ser consultada en el padrón de la AFIP',
-        dest='option')
-    group.add_argument(
+        dest='person')
+    exclusive.add_argument(
         '--tabla',
         type=lambda x: validation.check_cli(
             base, type='list', value=x, name='tabla', list=a100_collections),
-        help='tabla a ser consultada en el padrón de la AFIP. ' \
-             'Valores válidos: ' + ', '.join(a100_collections),
-        dest='option')
+        help='tabla a ser consultada en el padrón de la AFIP '
+             '(sólo válido con alcance = 100)\n'
+             'valores soportados:\n\t' + '\n\t'.join(a100_collections),
+        dest='table')
 
     return base
 
@@ -244,21 +264,23 @@ def wsfe_parser(base):
 
 def cli_parser(version):
     """
-    Parsea la línea de comandos buscando argumentos requeridos y soportados.
+    Parsea la línea de comandos buscando argumentos requeridos y soportados
     """
+    import gettext
+
+    # Obtengo las traducciones al español
+    gettext.gettext = arg_gettext
+
     # Obtengo el parser base
     base = base_parser(version)
 
-    # Llamo al parser correspondiente según el script
-    parser = getattr(sys.modules[__name__], '%s_parser' % base.prog[:-3])(base)
+    # Llamo a la función del parser según el script que se está ejecutando
+    parser = getattr(sys.modules[__name__],
+                     '%s_parser' % base.prog[:-3])(base)
 
-    # Parseo la línea de comandos
-    args = parser.parse_args()
-
-    # Incluyo el nombre del script como argumento
-    args.script = base.prog
-
-    return vars(args)
+    # Realizo las validaciones según el script que no puedo hacer via argparse
+    # y devuelvo los comandos pasados por línea de comando
+    return validation.check_parser(parser)
 
 
 # Fechas
