@@ -52,7 +52,6 @@ docs/_build/
 # Private Data
 config/certificates
 data/
-afip-ws/
 *.old
 
 # Visual Studio Code
