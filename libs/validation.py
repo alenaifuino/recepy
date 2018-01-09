@@ -16,7 +16,7 @@ Módulo con funciones auxiliares para la gestión de validación de input
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.8.2"
+__version__ = "0.8.6"
 
 
 def check_cuit(cuit):
@@ -128,7 +128,7 @@ def check_parser(parser):
     mediante argparse
     """
     # Parseo la línea de comandos
-    args = parser.parse_args()
+    args, extra = parser.parse_known_args()
 
     if args.prog == 'ws_sr_padron.py':
         if args.scope == '100' and not args.table or \
@@ -140,10 +140,15 @@ def check_parser(parser):
             raise parser.error('el argumento --persona sólo es válido con '
                                '--alcance 4, 5 o 10')
     elif args.prog == 'wsfe.py':
-        if not args.type or not args.parameter:
-            raise ValueError('Debe seleccionar un comprobante a autorizar o '
-                             'un parámetro a consultar')
-        if args.parameter == 'cotizacion' and not args.currency_id:
-            raise ValueError('Debe definir el ID de la moneda a cotizar')
+        if args.parameter == 'monedas':
+            if not extra:
+                raise parser.error('debe indicar el ID de la moneda a cotizar')
+            else:
+                args.parameter = 'monedas' + '=' + str(extra[0])
+        #if not args.type or not args.parameter:
+        #    raise ValueError('Debe seleccionar un comprobante a autorizar o '
+        #                     'un parámetro a consultar')
+        #if args.parameter == 'cotizacion' and not args.currency_id:
+        #    raise ValueError('Debe definir el ID de la moneda a cotizar')
 
     return vars(args)
