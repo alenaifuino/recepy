@@ -29,7 +29,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.7.3"
+__version__ = "1.7.7"
 
 
 # Archivo de configuración
@@ -161,8 +161,8 @@ def wsaa_parser(base):
         type=lambda x: validation.check_cli(
             base, type='list', value=x, name='web-service', list=web_services),
         required=True,
-        help='web service para el que se solicita acceso\n'
-             'valores soportados:\n\t' + '\n\t'.join(web_services),
+        help='web service para el que se solicita acceso. '
+             'Valores soportados:\n- ' + '\n- '.join(web_services),
         metavar='')
 
     return base
@@ -202,8 +202,8 @@ def ws_sr_padron_parser(base):
         type=lambda x: validation.check_cli(
             base, type='list', value=x, name='alcance', list=scope),
         required=True,
-        help='padrón de AFIP a ser consultado\n'
-             'valores soportados: ' + ', '.join(scope),
+        help='padrón de AFIP a ser consultado. '
+             'Valores soportados:\n- ' + '\n- '.join(scope),
         dest='scope')
     exclusive.add_argument(
         '--persona',
@@ -216,8 +216,8 @@ def ws_sr_padron_parser(base):
         type=lambda x: validation.check_cli(
             base, type='list', value=x, name='tabla', list=a100_collections),
         help='tabla a ser consultada en el padrón de la AFIP '
-             '(sólo válido con alcance = 100)\n'
-             'valores soportados:\n\t' + '\n\t'.join(a100_collections),
+             '(sólo válido con alcance = 100). '
+             'Valores soportados:\n- ' + '\n- '.join(a100_collections),
         dest='table')
 
     return base
@@ -227,37 +227,34 @@ def wsfe_parser(base):
     """
     Comandos específicos para el script wsfe.py
     """
-    # Creo el grupo de comandos mutuamente exclusivos
-    group = base.add_mutually_exclusive_group()
+    # Establezco un grupo de argumentos requeridos
+    required = base.add_argument_group('argumentos requeridos')
+
+    # Establezco el grupo de argumentos auto exclusivos
+    exclusive = required.add_mutually_exclusive_group(required=True)
 
     # Tupla de tipos de comprobantes habilitados
     voucher_type = ('CAE', 'CAEA')
 
     # Tupla de parámetros habilitados
-    params = ('comprobante', 'concepto', 'documento', 'iva', 'monedas',
-              'opcional', 'tributos', 'puntos_venta', 'cotizacion',
-              'tipos_paises')
+    param_type = ('comprobante', 'concepto', 'documento', 'iva', 'monedas',
+                  'opcional', 'tributos', 'puntos_venta', 'cotizacion',
+                  'tipos_paises')
 
-    group.add_argument(
+    exclusive.add_argument(
         '--comprobante',
-        default='CAE',
         type=lambda x: validation.check_cli(
             base, type='list', value=x, name='comprobante', list=voucher_type),
-        help='tipo de comprobante a ser autorizado. ' \
-             'Valores válidos: ' + ', '.join(voucher_type),
+        help='tipo de comprobante a ser autorizado. '
+             'Valores soportados:\n- ' + '\n- '.join(voucher_type),
         dest='voucher')
-    group.add_argument(
+    exclusive.add_argument(
         '--parametro',
         type=lambda x: validation.check_cli(
-            base, type='list', value=x, name='parametro', list=params),
-        help='parámetro a ser consultado en las tablas de AFIP. ' \
-             'Valores válidos: ' + ', '.join(params),
+            base, type='list', value=x, name='parametro', list=param_type),
+        help='parámetro a ser consultado en las tablas de AFIP. '
+             'Valores soportados:\n- ' + '\n- '.join(param_type),
         dest='parameter')
-    base.add_argument(
-        '--id-moneda',
-        help='ID de la moneda a consultar su cotización. Sólo es válido con ' \
-             'el parámetro "monedas"',
-        dest='currency_id')
 
     return base
 
