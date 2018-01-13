@@ -47,7 +47,7 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.9.6'
+__version__ = '0.9.7'
 
 
 class WSSRPADRON(web_service.WSBAse):
@@ -77,7 +77,7 @@ class WSSRPADRON(web_service.WSBAse):
         if self.dummy():
             raise SystemExit('El servicio de AFIP no se encuentra disponible')
 
-        # Establezco el lugar donde se guardarán los datos
+        # Establezco el lugar donde se almacenan los datos
         self.path = self.get_output_path(name=self.option)
 
         # Defino los parámetros comunes para los Web Services padrón de AFIP

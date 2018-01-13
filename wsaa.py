@@ -39,7 +39,7 @@ from libs import utility, web_service
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '2.1.5'
+__version__ = '2.1.6'
 
 
 class WSAA(web_service.WSBAse):
@@ -192,7 +192,7 @@ class WSAA(web_service.WSBAse):
         from requests import exceptions as requests_exceptions
         from zeep import exceptions as zeep_exceptions
 
-        # Obtengo el ticket del disco local
+        # Establezco el lugar donde se almacenan los datos
         self.path = self.get_output_path(name=self.web_service)
 
         # Verifico si hay un ticket en disco y obtengo sus datos
