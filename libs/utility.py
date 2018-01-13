@@ -29,7 +29,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.7.7"
+__version__ = "1.7.9"
 
 
 # Archivo de configuración
@@ -63,6 +63,29 @@ def get_config_data(args):
     validation.check_config(data)
 
     return data
+
+
+def get_cuit():
+    """
+    Devuelve la CUIT definida en el campo dn
+    """
+    # Inicializo cuit
+    cuit = CONFIG['dn']
+
+    # Obtengo la CUIT del elemento dn en CONFIG
+    for item in cuit.split(','):
+        if 'CUIT' in item:
+            cuit = item[-11:]
+            break
+
+    # Devuelvo la CUIT si es válida
+    try:
+        if validation.check_cuit(cuit):
+            return cuit
+    except ValueError:
+        pass
+
+    return None
 
 
 def print_config(data):
