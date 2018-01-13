@@ -68,7 +68,7 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.5.9'
+__version__ = '0.6.3'
 
 
 class WSFE(web_service.WSBAse):
@@ -79,9 +79,77 @@ class WSFE(web_service.WSBAse):
     def __init__(self, config):
         super().__init__(config['debug'], config['ws_wsdl'],
                          config['web_service'], '<string>.json')
-        self.cuit = config['cuit']
-        self.option = config['parameter']
+        self.cuit = utility.get_cuit()
+        self.request = 'voucher' if config['voucher'] else 'parameter'
+        self.option = config[self.request]
         self.path = None
+
+        # Establezco el ID de la moneda a cotizar
+        if self.request == 'parameter' and self.option == 'cotizacion':
+            self.currency_id = config['id']
+
+    def __request_param(self):
+        """
+        Método genérico que realiza la solicitud al método de AFIP definido
+        según service_name
+        """
+        from zeep import exceptions
+
+        # Métodos soportados por el web service de Factura Electrónica
+        methods = {
+            'comprobante': 'FEParamGetTiposCbte',
+            'concepto': 'FEParamGetTiposConcepto',
+            'documento': 'FEParamGetTiposDoc',
+            'iva': 'FEParamGetTiposIva',
+            'monedas': 'FEParamGetTiposMonedas',
+            'opcional': 'FEParamGetTiposOpcional',
+            'tributos': 'FEParamGetTiposTributos',
+            'puntos_venta': 'FEParamGetPtosVenta',
+            'cotizacion': 'FEParamGetCotizacion',
+            'tipos_paises': 'FEParamGetTiposPaises',
+        }
+
+        # Valido el nombre del método solicitado y lo asigno si es válido
+        if self.option not in methods.keys():
+            raise SystemExit('El parámetro no está soportado por el Web '
+                             'Service de Factura Electrónica')
+        else:
+            method = methods[self.option]
+
+        # Valido que el servicio de AFIP esté funcionando
+        if self.dummy('FEDummy'):
+            raise SystemExit('El servicio de AFIP no se encuentra disponible')
+
+        # Establezco el lugar donde se almacenan los datos
+        self.path = self.get_output_path(name=self.option)
+
+        # Defino los parámetros de autenticación
+        params = {
+            'Auth': {
+                'Token': self.token,
+                'Sign': self.sign,
+                'Cuit': self.cuit
+            }
+        }
+
+        # Agrego los parámetros adicionales según el método solicitado
+        if method == 'FEParamGetCotizacion':
+            params.update({'MonId': self.currency_id})
+
+        # Obtengo la respuesta del WSDL de AFIP
+        try:
+            response = self.soap_connect(self.ws_wsdl, method, params)
+        except exceptions.Fault as error:
+            raise SystemExit('Error: {} {}'.format(error.code, error.message))
+
+        # Lo transformo a JSON
+        json_response = dumps(response, indent=2, ensure_ascii=False)
+
+        # Genero el archivo con la respuesta de AFIP
+        with open(self.path, 'w') as file:
+            file.write(json_response)
+
+        return json_response
 
     def __request_fe(self, req_type):
         """
@@ -93,7 +161,7 @@ class WSFE(web_service.WSBAse):
         if self.dummy('FEDummy'):
             raise SystemExit('El servicio de AFIP no se encuentra disponible')
 
-        # Establezco el lugar donde se guardarán los datos
+        # Establezco el lugar donde se almacenan los datos
         self.path = self.get_output_path(name=self.option)
 
         # Formateo el tipo de requerimiento
@@ -107,7 +175,7 @@ class WSFE(web_service.WSBAse):
             'Auth': {
                 'Token': self.token,
                 'Sign': self.sign,
-                'Cuit': self.cuit
+                #'Cuit': self.cuit
             }
         }
 
@@ -272,78 +340,14 @@ class WSFE(web_service.WSBAse):
         }
         '''
 
-    def __request_param(self):
-        """
-        Método genérico que realiza la solicitud al método de AFIP definido
-        según service_name
-        """
-        from zeep import exceptions
-
-        methods = {
-            'comprobante': 'FEParamGetTiposCbte',
-            'concepto': 'FEParamGetTiposConcepto',
-            'documento': 'FEParamGetTiposDoc',
-            'iva': 'FEParamGetTiposIva',
-            'monedas': 'FEParamGetTiposMonedas',
-            'opcional': 'FEParamGetTiposOpcional',
-            'tributos': 'FEParamGetTiposTributos',
-            'puntos_venta': 'FEParamGetPtosVenta',
-            'cotizacion': 'FEParamGetCotizacion',
-            'tipos_paises': 'FEParamGetTiposPaises',
-        }
-
-        # Valido el nombre del método solicitado y lo asigno si es válido
-        if self.option not in methods.keys():
-            raise SystemExit('El parámetro no está soportado por el Web '
-                             'Service de Factura Electrónica')
-        else:
-            method = methods[self.option]
-
-        # Valido que el servicio de AFIP esté funcionando
-        if self.dummy('FEDummy'):
-            raise SystemExit('El servicio de AFIP no se encuentra disponible')
-
-        # Establezco el lugar donde se guardarán los datos
-        self.path = self.get_output_path(name=self.option)
-
-        # Defino los parámetros de autenticación
-        params = {
-            'Auth': {
-                'Token': self.token,
-                'Sign': self.sign,
-                'Cuit': self.cuit
-            }
-        }
-
-        # Agrego los parámetros adicionales según el método solicitado
-        if method == 'FEParamGetCotizacion':
-            params.update({'MonId': self.config['currency_id']})
-
-        # Obtengo la respuesta del WSDL de AFIP
-        try:
-            response = self.soap_connect(self.ws_wsdl, method, params)
-        except exceptions.Fault as error:
-            raise SystemExit('Error: {} {}'.format(error.code, error.message))
-
-        # Lo transformo a JSON
-        json_response = dumps(response, indent=2, ensure_ascii=False)
-
-        # Genero el archivo con la respuesta de AFIP
-        output = self.get_output_path(name=self.option)
-        with open(output, 'w') as file:
-            file.write(json_response)
-
-        return json_response
-
-    def request(self):
+    def get_request(self):
         """
         Wrapper que define a qué método se llama dependiendo de la opción
         seleccionada
         """
-        print(self.option)
-        if self.option == 'parameter':
+        if self.request == 'parameter':
             self.__request_param()
-        elif self.option == 'request':
+        elif self.request == 'voucher':
             self.__request_fe('')
 
 
@@ -374,7 +378,7 @@ def main():
     voucher.token, voucher.sign = wsaa.get_ticket()
 
     # Obtengo los datos solicitados
-    voucher.request()
+    voucher.get_request()
 
     # Imprimo la ubicación del archivo de salida
     print('Respuesta AFIP en: {}'.format(voucher.path))
