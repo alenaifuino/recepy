@@ -16,7 +16,7 @@ Módulo con funciones auxiliares para la gestión de validación de input
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.8.7"
+__version__ = "0.9.1"
 
 
 def check_cuit(cuit):
@@ -119,107 +119,34 @@ def check_cli(parser, **kwargs):
         if kwargs['value'] not in kwargs['list']:
             raise parser.error(kwargs['name'] + ': no es un valor válido')
 
-    # Ejecuto verificaciones adicional donde los controles previos resultan
-    # insuficientes
-    '''
-    if kwargs['name'] == 'parametro' and kwargs['value'] == 'cotizacion':
-        20 37 38 39
-        currency_id = (000
-PES 
-DOL 
-002
-003
-004
-005
-006
-007
-008
-009
-010
-011
-012
-013
-014
-015
-016
-017
-018
-019
-021
-022
-023
-024
-025
-026
-027
-028
-029
-030
-031
-032
-033
-034
-035
-036
-040
-041
-042
-043
-044
-045
-046
-047
-048
-049
-050
-051
-052
-053
-054
-055
-056
-057
-058
-059
-060
-061
-062
-063
-064
-)
-    '''
     return kwargs['value']
 
 
-def check_parser(parser):
+def check_parser(args, extra):
     """
     Valida las combinaciones de argumentos que no pueden ser validadas
     mediante argparse
     """
-    # Parseo la línea de comandos
-    args, extra = parser.parse_known_args()
-
     if args.prog == 'ws_sr_padron.py':
         if args.scope == '100' and not args.table or \
            args.scope != '100' and args.table:
-            raise parser.error('el agumento --tabla sólo es válido con '
-                               '--alcance 100')
+            raise ValueError('el agumento --tabla sólo es válido con '
+                             '--alcance 100')
         elif args.scope == '100' and args.person or \
              args.scope != '100' and not args.person:
-            raise parser.error('el argumento --persona sólo es válido con '
-                               '--alcance 4, 5 o 10')
+            raise ValueError('el argumento --persona sólo es válido con '
+                             '--alcance 4, 5 o 10')
     elif args.prog == 'wsfe.py':
         if args.parameter == 'cotizacion':
-            if not extra:
-                raise parser.error('debe indicar el ID de la moneda a cotizar')
-            elif len(extra) > 1:
-                raise parser.error('debe indicar un único ID')
-            else:
-                args.parameter = 'cotizacion' + '=' + str(extra[0])
+            if '--id' not in extra:
+                raise ValueError('debe indicar el ID (--id) de la moneda a '
+                                 'cotizar')
+            elif len(extra) != 2:
+                raise ValueError('debe indicar un único ID')
         #if not args.type or not args.parameter:
         #    raise ValueError('Debe seleccionar un comprobante a autorizar o '
         #                     'un parámetro a consultar')
         #if args.parameter == 'cotizacion' and not args.currency_id:
         #    raise ValueError('Debe definir el ID de la moneda a cotizar')
 
-    return vars(args)
+    return True

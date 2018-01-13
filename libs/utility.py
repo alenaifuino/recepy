@@ -29,7 +29,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.7.9"
+__version__ = "1.8.1"
 
 
 # Archivo de configuración
@@ -298,11 +298,23 @@ def cli_parser(version):
     parser = getattr(sys.modules[__name__],
                      '%s_parser' % base.prog[:-3])(base)
 
-    # Realizo las validaciones según el script que no puedo hacer via argparse
-    # y devuelvo los comandos pasados por línea de comando
-    args = validation.check_parser(parser)
+    # Parseo la línea de comandos donde args son los parámetros conocidos y
+    # extra el resto de los parámetros
+    args, extra = parser.parse_known_args()
 
-    # Establezco el nombre del web service según el alcance
+    # Realizo las validaciones según el script que no puedo hacer via argparse
+    try:
+        validation.check_parser(args, extra)
+        args = vars(args)
+    except ValueError as error:
+        raise parser.error(error)
+
+    # Si extra no es vacío incorporo los parámetros a la lista de argumentos
+    if extra:
+        args.update(
+            {extra[i][2:]: extra[i+1] for i in range(0, len(extra), 2)})
+
+    # Incorporo el nombre del web service según el alcance
     args['web_service'] = args['prog'][:-3]
 
     return args
