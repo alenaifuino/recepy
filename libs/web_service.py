@@ -14,7 +14,6 @@ Módulo con clases para la gestión de Web Services SOAP
 """
 
 import logging
-import os
 
 from requests import Session
 from zeep import Client, helpers
@@ -23,7 +22,7 @@ from zeep.transports import Transport
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.4.3'
+__version__ = '1.4.4'
 
 
 class WSBase():
@@ -94,12 +93,15 @@ class WSBase():
 
     def set_output_path(self, output_file):
         """
-        Devuelve el path y archivo donde se almacena la respuesta
+        Devuelve el path y archivo donde se almacena la respuesta y crea los
+        directorios si estos no existen
         """
+        import os
+
         from config.config import OUTPUT_DIR
 
         # Defino el nombre del directorio de salida
-        output_dir = OUTPUT_DIR + self.web_service
+        output_dir = OUTPUT_DIR + self.web_service + '/'
 
         # Creo el directorio si este no existe
         os.makedirs(os.path.dirname(output_dir), exist_ok=True)
