@@ -29,7 +29,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.8.2"
+__version__ = "1.8.3"
 
 
 # Archivo de configuración
@@ -123,7 +123,7 @@ def arg_gettext(message):
         'expected at least one argument':
             'se espera al menos un valor para el parámetro',
         'one of the arguments %s is required':
-            'al menos uno de los argumentos %s es requerido',
+            'al menos uno de los siguientes argumentos %s es requerido',
         'not allowed with argument %s': 'no permitido con el argumento %s'
     }
 
