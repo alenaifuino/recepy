@@ -68,21 +68,20 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.6.3'
+__version__ = '0.6.8'
 
 
-class WSFE(web_service.WSBAse):
+class WSFE(web_service.WSBase):
     """
     Clase que se usa de interfaz para el Web Service de Factura Electrónica
     de AFIP
     """
     def __init__(self, config):
         super().__init__(config['debug'], config['ws_wsdl'],
-                         config['web_service'], '<string>.json')
+                         config['web_service'])
         self.cuit = utility.get_cuit()
         self.request = 'voucher' if config['voucher'] else 'parameter'
         self.option = config[self.request]
-        self.path = None
 
         # Establezco el ID de la moneda a cotizar
         if self.request == 'parameter' and self.option == 'cotizacion':
@@ -121,7 +120,7 @@ class WSFE(web_service.WSBAse):
             raise SystemExit('El servicio de AFIP no se encuentra disponible')
 
         # Establezco el lugar donde se almacenan los datos
-        self.path = self.get_output_path(name=self.option)
+        self.set_output_path(output_file=self.option + '.json')
 
         # Defino los parámetros de autenticación
         params = {
@@ -138,7 +137,7 @@ class WSFE(web_service.WSBAse):
 
         # Obtengo la respuesta del WSDL de AFIP
         try:
-            response = self.soap_connect(self.ws_wsdl, method, params)
+            response = web_service.soap_connect(self.ws_wsdl, method, params)
         except exceptions.Fault as error:
             raise SystemExit('Error: {} {}'.format(error.code, error.message))
 
@@ -146,7 +145,7 @@ class WSFE(web_service.WSBAse):
         json_response = dumps(response, indent=2, ensure_ascii=False)
 
         # Genero el archivo con la respuesta de AFIP
-        with open(self.path, 'w') as file:
+        with open(self.output, 'w') as file:
             file.write(json_response)
 
         return json_response
@@ -162,7 +161,7 @@ class WSFE(web_service.WSBAse):
             raise SystemExit('El servicio de AFIP no se encuentra disponible')
 
         # Establezco el lugar donde se almacenan los datos
-        self.path = self.get_output_path(name=self.option)
+        self.set_output_path(output_file=self.option + '.json')
 
         # Formateo el tipo de requerimiento
         req_type = req_type.upper()
@@ -251,7 +250,7 @@ class WSFE(web_service.WSBAse):
 
         # Obtengo la respuesta del WSDL de AFIP
         try:
-            response = self.soap_connect(self.ws_wsdl, method, params)
+            response = web_service.soap_connect(self.ws_wsdl, method, params)
         except exceptions.Fault as error:
             raise SystemExit('Error: {} {}'.format(error.code, error.message))
 
@@ -381,7 +380,7 @@ def main():
     voucher.get_request()
 
     # Imprimo la ubicación del archivo de salida
-    print('Respuesta AFIP en: {}'.format(voucher.path))
+    print('Respuesta AFIP en: {}'.format(voucher.output))
 
 
 if __name__ == '__main__':
