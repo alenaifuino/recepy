@@ -29,7 +29,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.8.1"
+__version__ = "1.8.2"
 
 
 # Archivo de configuración
@@ -314,8 +314,9 @@ def cli_parser(version):
         args.update(
             {extra[i][2:]: extra[i+1] for i in range(0, len(extra), 2)})
 
-    # Incorporo el nombre del web service según el alcance
-    args['web_service'] = args['prog'][:-3]
+    # Incorporo el nombre del web service si este no está definido
+    if not args['web_service']:
+        args['web_service'] = args['prog'][:-3]
 
     return args
 
