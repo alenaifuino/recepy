@@ -47,7 +47,7 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.9.8'
+__version__ = '0.9.9'
 
 
 class WSSRPADRON(web_service.WSBase):
@@ -63,8 +63,8 @@ class WSSRPADRON(web_service.WSBase):
         super().__init__(config['debug'], config['ws_wsdl'],
                          config['web_service'])
         self.cuit = config['cuit']
-        self.scope = config['scope']
-        self.option = config['table'] if self.scope == 100 else config['person']
+        self.scope = config['alcance']
+        self.option = config['tabla'] if self.scope == 100 else config['persona']
 
     def get_scope_data(self):
         """
@@ -123,7 +123,7 @@ def main():
     args = utility.cli_parser(__version__)
 
     # Actualizo el nombre del web service según el alcance
-    args['web_service'] += '_a' + args['scope']
+    args['web_service'] += '_a' + args['alcance']
 
     # Obtengo los datos de configuración
     try:

@@ -29,7 +29,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.8.7"
+__version__ = "1.8.8"
 
 
 # Archivo de configuración
@@ -223,14 +223,12 @@ def ws_sr_padron_parser(base):
             base, type='list', value=x, name='alcance', list=scope),
         required=True,
         help='padrón de AFIP a ser consultado. '
-             'Valores soportados:\n- ' + '\n- '.join(scope),
-        dest='scope')
+             'Valores soportados:\n- ' + '\n- '.join(scope))
     exclusive.add_argument(
         '--persona',
         type=lambda x: validation.check_cli(
             base, type='cuit', value=x, name='persona'),
         help='CUIT a ser consultada en el padrón de la AFIP',
-        dest='person',
         metavar='')
     exclusive.add_argument(
         '--tabla',
@@ -239,7 +237,6 @@ def ws_sr_padron_parser(base):
         help='tabla a ser consultada en el padrón de la AFIP '
              '(sólo válido con alcance = 100). '
              'Valores soportados:\n- ' + '\n- '.join(a100_collections),
-        dest='table',
         metavar='')
 
     return base
@@ -256,31 +253,29 @@ def wsfe_parser(base):
     exclusive = required.add_mutually_exclusive_group(required=True)
 
     # Tupla de tipos de comprobantes habilitados
-    voucher_type = ('solicitar', 'consultar', 'informar_sin_movimiento',
-                    'consultar_sin_movimiento', 'informar_comprobantes',
-                    'ultimo_autorizado', 'cantidad_registros',
-                    'consultar_comprobante')
+    voucher = ('solicitar', 'consultar', 'informar_sin_movimiento',
+               'consultar_sin_movimiento', 'informar_comprobantes',
+               'ultimo_autorizado', 'cantidad_registros',
+               'consultar_comprobante')
 
     # Tupla de parámetros habilitados
-    param_type = ('comprobante', 'concepto', 'documento', 'iva', 'monedas',
-                  'opcional', 'tributos', 'puntos_venta', 'cotizacion',
-                  'tipos_paises')
+    parameter = ('comprobante', 'concepto', 'documento', 'iva', 'monedas',
+                 'opcional', 'tributos', 'puntos_venta', 'cotizacion',
+                 'tipos_paises')
 
     exclusive.add_argument(
         '--comprobante',
         type=lambda x: validation.check_cli(
-            base, type='list', value=x, name='comprobante', list=voucher_type),
+            base, type='list', value=x, name='comprobante', list=voucher),
         help='tipo de comprobante a ser autorizado. '
-             'Valores soportados:\n- ' + '\n- '.join(voucher_type),
-        dest='voucher',
+             'Valores soportados:\n- ' + '\n- '.join(voucher),
         metavar='')
     exclusive.add_argument(
         '--parametro',
         type=lambda x: validation.check_cli(
-            base, type='list', value=x, name='parametro', list=param_type),
+            base, type='list', value=x, name='parametro', list=parameter),
         help='parámetro a ser consultado en las tablas de AFIP. '
-             'Valores soportados:\n- ' + '\n- '.join(param_type),
-        dest='parameter',
+             'Valores soportados:\n- ' + '\n- '.join(parameter),
         metavar='')
 
     return base
