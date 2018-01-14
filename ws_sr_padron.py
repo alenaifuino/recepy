@@ -47,10 +47,10 @@ from wsaa import WSAA
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.9.7'
+__version__ = '0.9.8'
 
 
-class WSSRPADRON(web_service.WSBAse):
+class WSSRPADRON(web_service.WSBase):
     """
     Clase que se usa de interfaz para el Web Service de Consulta a Padrón AFIP:
         - Alcance 4
@@ -61,11 +61,10 @@ class WSSRPADRON(web_service.WSBAse):
 
     def __init__(self, config):
         super().__init__(config['debug'], config['ws_wsdl'],
-                         config['web_service'], '<string>.json')
+                         config['web_service'])
         self.cuit = config['cuit']
         self.scope = config['scope']
         self.option = config['table'] if self.scope == 100 else config['person']
-        self.path = None
 
     def get_scope_data(self):
         """
@@ -78,7 +77,7 @@ class WSSRPADRON(web_service.WSBAse):
             raise SystemExit('El servicio de AFIP no se encuentra disponible')
 
         # Establezco el lugar donde se almacenan los datos
-        self.path = self.get_output_path(name=self.option)
+        self.set_output_path(output_file=self.option + '.json')
 
         # Defino los parámetros comunes para los Web Services padrón de AFIP
         params = {
@@ -97,7 +96,7 @@ class WSSRPADRON(web_service.WSBAse):
 
         # Obtengo la respuesta del WSDL de AFIP
         try:
-            response = self.soap_connect(self.ws_wsdl, method, params)
+            response = web_service.soap_connect(self.ws_wsdl, method, params)
         except exceptions.Fault as error:
             raise SystemExit('Error: {} {}'.format(error.code, error.message))
 
@@ -110,7 +109,7 @@ class WSSRPADRON(web_service.WSBAse):
         json_response = dumps(response, indent=2, ensure_ascii=False)
 
         # Genero el archivo con la respuesta de AFIP
-        with open(self.path, 'w') as _:
+        with open(self.output, 'w') as _:
             _.write(json_response)
 
         return json_response
@@ -149,7 +148,7 @@ def main():
     census.get_scope_data()
 
     # Imprimo la ubicación del archivo de salida
-    print('Respuesta AFIP en: {}'.format(census.path))
+    print('Respuesta AFIP en: {}'.format(census.output))
 
 
 if __name__ == '__main__':
