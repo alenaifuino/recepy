@@ -22,7 +22,7 @@ from zeep.transports import Transport
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.4.4'
+__version__ = '1.5.2'
 
 
 class WSBase():
@@ -39,39 +39,13 @@ class WSBase():
         self.sign = None
         self.output = None
 
-    def soap_connect(self, wsdl, name, parameters=None, timeout=30):
-        """
-        Conecta al Web Service SOAP de AFIP requerido con los parámetros
-        suministrados
-        """
-        # Instancio Session para validar la conexión SSL, de esta manera la
-        # información se mantiene de manera persistente
-        session = Session()
-
-        # Instancio Transport con la información de sesión y el timeout a
-        # utilizar en la conexión
-        transport = Transport(session=session, timeout=timeout)
-
-        # Instancio Client con los datos del wsdl y de transporte
-        client = Client(wsdl=wsdl, transport=transport)
-
-        # Obtengo la respuesta de AFIP según el tipo de método y los parámetros
-        # suministrados
-        if not parameters:
-            response = getattr(client.service, name)()
-        else:
-            response = getattr(client.service, name)(**parameters)
-
-        # Serializo y devuelvo la respuesta de AFIP
-        return helpers.serialize_object(response)
-
     def dummy(self, name='dummy'):
         """
         Verifica estado y disponibilidad de los elementos principales del
         servicio de AFIP: aplicación, autenticación y base de datos
         """
         # Obtengo la respuesta de AFIP
-        response = self.soap_connect(self.ws_wsdl, name)
+        response = soap_connect(self.ws_wsdl, name)
 
         # Armo un diccionario con el estado de cada componente
         status = {key.lower(): value for (key, value) in response.items()}
@@ -108,3 +82,30 @@ class WSBase():
 
         # Defino el archivo y ruta donde se guardará el ticket
         self.output = os.path.join(output_dir, output_file)
+
+
+def soap_connect(wsdl, name, parameters=None, timeout=30):
+    """
+    Conecta al Web Service SOAP de AFIP requerido con los parámetros
+    suministrados
+    """
+    # Instancio Session para validar la conexión SSL, de esta manera la
+    # información se mantiene de manera persistente
+    session = Session()
+
+    # Instancio Transport con la información de sesión y el timeout a
+    # utilizar en la conexión
+    transport = Transport(session=session, timeout=timeout)
+
+    # Instancio Client con los datos del wsdl y de transporte
+    client = Client(wsdl=wsdl, transport=transport)
+
+    # Obtengo la respuesta de AFIP según el tipo de método y los parámetros
+    # suministrados
+    if not parameters:
+        response = getattr(client.service, name)()
+    else:
+        response = getattr(client.service, name)(**parameters)
+
+    # Serializo y devuelvo la respuesta de AFIP
+    return helpers.serialize_object(response)

@@ -39,7 +39,7 @@ from libs import utility, web_service
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '2.1.8'
+__version__ = '2.1.9'
 
 
 class WSAA(web_service.WSBase):
@@ -173,7 +173,7 @@ class WSAA(web_service.WSBase):
         params = {'in0': cms}
 
         # XML de respuesta
-        response = self.soap_connect(self.wsdl, 'loginCms', params)
+        response = web_service.soap_connect(self.wsdl, 'loginCms', params)
 
         # Genero el archivo con la respuesta de AFIP
         with open(self.output, 'w') as _:
