@@ -16,7 +16,7 @@ Módulo con funciones auxiliares para la gestión de validación de input
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "0.9.1"
+__version__ = "0.9.4"
 
 
 def check_cuit(cuit):
@@ -124,7 +124,7 @@ def check_cli(parser, **kwargs):
 
 def check_parser(args, extra):
     """
-    Valida las combinaciones de argumentos que no pueden ser validadas
+    Valida las combinaciones de argumentos que no pueden ser verificadas
     mediante argparse
     """
     if args.prog == 'ws_sr_padron.py':
@@ -139,14 +139,16 @@ def check_parser(args, extra):
     elif args.prog == 'wsfe.py':
         if args.parameter == 'cotizacion':
             if '--id' not in extra:
-                raise ValueError('debe indicar el ID (--id) de la moneda a '
-                                 'cotizar')
+                raise ValueError('debe indicar el ID de la moneda a '
+                                 'cotizar: --id ID')
             elif len(extra) != 2:
                 raise ValueError('debe indicar un único ID')
-        #if not args.type or not args.parameter:
-        #    raise ValueError('Debe seleccionar un comprobante a autorizar o '
-        #                     'un parámetro a consultar')
-        #if args.parameter == 'cotizacion' and not args.currency_id:
-        #    raise ValueError('Debe definir el ID de la moneda a cotizar')
+        if args.voucher in ('solicitar', 'ultimo_autorizado',
+                            'cantidad_registros', 'consultar_comprobante'):
+            if '--tipo' not in extra:
+                raise ValueError('debe inficar el tipo de comprobante: '
+                                 '--tipo CAE o CAEA')
+            elif len(extra) != 2:
+                raise ValueError('debe indicar un único tipo de comprobante')
 
     return True
