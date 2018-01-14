@@ -39,25 +39,23 @@ from libs import utility, web_service
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '2.1.6'
+__version__ = '2.1.8'
 
 
-class WSAA(web_service.WSBAse):
+class WSAA(web_service.WSBase):
     """
     Clase que se usa de interfaz para el Web Service de Autenticación
     y Autorización de AFIP
     """
 
     def __init__(self, conf):
-        super().__init__(conf['debug'], conf['ws_wsdl'], conf['web_service'],
-                         'ta.xml')
+        super().__init__(conf['debug'], conf['ws_wsdl'], conf['web_service'])
         self.prod = conf['prod']
         self.sdn = conf['dn']
         self.certificate = conf['certificate']
         self.private_key = conf['private_key']
         self.wsdl = conf['wsdl']
         self.expiration_time = None
-        self.path = None
 
     def __create_tra(self):
         """
@@ -178,7 +176,7 @@ class WSAA(web_service.WSBAse):
         response = self.soap_connect(self.wsdl, 'loginCms', params)
 
         # Genero el archivo con la respuesta de AFIP
-        with open(self.path, 'w') as _:
+        with open(self.output, 'w') as _:
             _.write(response)
 
         # Parseo los elementos de la respuestsa XML de AFIP
@@ -193,11 +191,11 @@ class WSAA(web_service.WSBAse):
         from zeep import exceptions as zeep_exceptions
 
         # Establezco el lugar donde se almacenan los datos
-        self.path = self.get_output_path(name=self.web_service)
+        self.set_output_path(output_file='ta.xml')
 
         # Verifico si hay un ticket en disco y obtengo sus datos
         try:
-            with open(self.path, 'r') as file:
+            with open(self.output, 'r') as file:
                 xml = file.read()
 
             # Parseo los elementos del archivo XML
@@ -272,7 +270,7 @@ def print_output(ticket):
     """
     # Diccionario con los datos de salida
     data = {
-        'Ticket en: ': ticket.path,
+        'Ticket en: ': ticket.output,
         'Token: ': ticket.token[:25] + '...',
         'Sign: ': ticket.sign[:25] + '...',
         'Expiration Time: ': ticket.expiration_time

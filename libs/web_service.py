@@ -20,28 +20,25 @@ from requests import Session
 from zeep import Client, helpers
 from zeep.transports import Transport
 
-from config.config import OUTPUT_DIR
-
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '1.3.4'
+__version__ = '1.4.3'
 
 
-class WSBAse():
+class WSBase():
     """
     Clase que se usa como base para los web services de acceso al
     sistema SOAP de AFIP
     """
 
-    def __init__(self, debug, ws_wsdl, web_service, out_file):
+    def __init__(self, debug, ws_wsdl, web_service):
         self.debug = debug
         self.ws_wsdl = ws_wsdl
         self.web_service = web_service
-        self.out_dir = OUTPUT_DIR + web_service
-        self.out_file = out_file
         self.token = None
         self.sign = None
+        self.output = None
 
     def soap_connect(self, wsdl, name, parameters=None, timeout=30):
         """
@@ -69,13 +66,13 @@ class WSBAse():
         # Serializo y devuelvo la respuesta de AFIP
         return helpers.serialize_object(response)
 
-    def dummy(self, service_name='dummy'):
+    def dummy(self, name='dummy'):
         """
         Verifica estado y disponibilidad de los elementos principales del
         servicio de AFIP: aplicación, autenticación y base de datos
         """
         # Obtengo la respuesta de AFIP
-        response = self.soap_connect(self.ws_wsdl, service_name)
+        response = self.soap_connect(self.ws_wsdl, name)
 
         # Armo un diccionario con el estado de cada componente
         status = {key.lower(): value for (key, value) in response.items()}
@@ -95,12 +92,17 @@ class WSBAse():
 
         return False
 
-    def get_output_path(self, name, string='<string>'):
+    def set_output_path(self, output_file):
         """
         Devuelve el path y archivo donde se almacena la respuesta
         """
+        from config.config import OUTPUT_DIR
+
+        # Defino el nombre del directorio de salida
+        output_dir = OUTPUT_DIR + self.web_service
+
         # Creo el directorio si este no existe
-        os.makedirs(os.path.dirname(self.out_dir), exist_ok=True)
+        os.makedirs(os.path.dirname(output_dir), exist_ok=True)
 
         # Defino el archivo y ruta donde se guardará el ticket
-        return os.path.join(self.out_dir, self.out_file.replace(string, name))
+        self.output = os.path.join(output_dir, output_file)
