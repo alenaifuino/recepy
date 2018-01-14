@@ -62,13 +62,15 @@ http://www.afip.gob.ar/fe/documentos/manual_desarrollador_COMPG_v2_10.pdf
 
 from json import dumps
 
+from zeep import exceptions
+
 from libs import utility, web_service
 from wsaa import WSAA
 
 __author__ = 'Alejandro Naifuino (alenaifuino@gmail.com)'
 __copyright__ = 'Copyright (C) 2017 Alejandro Naifuino'
 __license__ = 'GPL 3.0'
-__version__ = '0.6.8'
+__version__ = '0.7.1'
 
 
 class WSFE(web_service.WSBase):
@@ -76,24 +78,29 @@ class WSFE(web_service.WSBase):
     Clase que se usa de interfaz para el Web Service de Factura Electrónica
     de AFIP
     """
+
     def __init__(self, config):
         super().__init__(config['debug'], config['ws_wsdl'],
                          config['web_service'])
         self.cuit = utility.get_cuit()
-        self.request = 'voucher' if config['voucher'] else 'parameter'
+        self.request = 'comprobante' if config['comprobante'] else 'parametro'
         self.option = config[self.request]
 
-        # Establezco el ID de la moneda a cotizar
-        if self.request == 'parameter' and self.option == 'cotizacion':
+        # Establezco el ID de la moneda a cotizar si el método es cotizacion
+        if self.request == 'parametro' and self.option == 'cotizacion':
             self.currency_id = config['id']
+
+        # Establezco el tipo de comprobante dependiendo del método seleccionado
+        if self.request == 'comprobante':
+            if self.option in ('solicitar', 'ultimo_autorizado',
+                               'cantidad_registros', 'consultar_comprobante'):
+                self.voucher_type = config['tipo']
 
     def __request_param(self):
         """
-        Método genérico que realiza la solicitud al método de AFIP definido
-        según service_name
+        Método genérico que realiza la solicitud a los métodos de AFIP que
+        devuelven parámetros
         """
-        from zeep import exceptions
-
         # Métodos soportados por el web service de Factura Electrónica
         methods = {
             'comprobante': 'FEParamGetTiposCbte',
@@ -115,10 +122,6 @@ class WSFE(web_service.WSBase):
         else:
             method = methods[self.option]
 
-        # Valido que el servicio de AFIP esté funcionando
-        if self.dummy('FEDummy'):
-            raise SystemExit('El servicio de AFIP no se encuentra disponible')
-
         # Establezco el lugar donde se almacenan los datos
         self.set_output_path(output_file=self.option + '.json')
 
@@ -131,8 +134,8 @@ class WSFE(web_service.WSBase):
             }
         }
 
-        # Agrego los parámetros adicionales según el método solicitado
-        if method == 'FEParamGetCotizacion':
+        # Agrego los parámetros adicionales para el método cotizacion
+        if self.option == 'cotizacion':
             params.update({'MonId': self.currency_id})
 
         # Obtengo la respuesta del WSDL de AFIP
@@ -150,33 +153,42 @@ class WSFE(web_service.WSBase):
 
         return json_response
 
-    def __request_fe(self, req_type):
+    def __request_fe(self):
         """
         Método genérico que realiza la solicitud según el req_type definido
         """
-        from zeep import exceptions
+        # Métodos soportados por el web service de Factura Electrónica
+        methods = {
+            'solicitar': '',
+            'consultar': 'FECAEAConsultar',
+            'informar_sin_movimiento': 'FECAEASinMovimientoInformar',
+            'consultar_sin_movimiento': 'FECAEASinMovimientoConsultar',
+            'informar_comprobantes': 'FECAEARegInformativo',
+            'ultimo_autorizado': 'FECompUltimoAutorizado',
+            'cantidad_registros': 'FECompTotXRequest',
+            'consultar_comprobante': 'FECompConsultar',
+        }
 
-        # Valido que el servicio de AFIP este funcionando
-        if self.dummy('FEDummy'):
-            raise SystemExit('El servicio de AFIP no se encuentra disponible')
+        # Valido el nombre del método solicitado y lo asigno si es válido
+        if self.option not in methods.keys():
+            raise SystemExit('El parámetro no está soportado por el Web '
+                             'Service de Factura Electrónica')
+        else:
+            method = methods[self.option]
 
         # Establezco el lugar donde se almacenan los datos
         self.set_output_path(output_file=self.option + '.json')
-
-        # Formateo el tipo de requerimiento
-        req_type = req_type.upper()
-
-        # Establezco el nombre del método que será llamado
-        method = 'FE' + req_type + 'Solicitar'
 
         # Defino los parámetros de autenticación
         params = {
             'Auth': {
                 'Token': self.token,
                 'Sign': self.sign,
-                #'Cuit': self.cuit
+                'Cuit': self.cuit
             }
         }
+
+        # Agrego los parámetros adicionales para el método cotizacion
 
         # Defino los parámetros adicionales según el tipo de requerimiento
         if req_type == 'FECAESolicitar':
@@ -240,10 +252,7 @@ class WSFE(web_service.WSBase):
                 }
             }
         elif req_type == 'FECAEASolicitar' or req_type == 'FECAEAConsultar':
-            extra = {
-                'Periodo': '',
-                'Orden': ''
-            }
+            extra = {'Periodo': '', 'Orden': ''}
 
         # Actualizo el diccionario de parámetros
         params.update(extra)
@@ -253,7 +262,6 @@ class WSFE(web_service.WSBase):
             response = web_service.soap_connect(self.ws_wsdl, method, params)
         except exceptions.Fault as error:
             raise SystemExit('Error: {} {}'.format(error.code, error.message))
-
         '''
         {
             'FECAEASinMovimientoInformar': {
@@ -342,12 +350,16 @@ class WSFE(web_service.WSBase):
     def get_request(self):
         """
         Wrapper que define a qué método se llama dependiendo de la opción
-        seleccionada
+        seleccionada validando primero que el web service de AFIP esté activo
         """
-        if self.request == 'parameter':
+        # Valido que el servicio de AFIP esté funcionando
+        if self.dummy('FEDummy'):
+            raise SystemExit('El servicio de AFIP no se encuentra disponible')
+
+        if self.request == 'parametro':
             self.__request_param()
-        elif self.request == 'voucher':
-            self.__request_fe('')
+        elif self.request == 'comprobante':
+            self.__request_fe()
 
 
 def main():
