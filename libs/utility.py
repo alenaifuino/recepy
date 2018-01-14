@@ -29,7 +29,7 @@ from . import validation
 __author__ = "Alejandro Naifuino <alenaifuino@gmail.com>"
 __copyright__ = "Copyright (C) 2017 Alejandro Naifuino"
 __license__ = "GPL 3.0"
-__version__ = "1.8.4"
+__version__ = "1.8.7"
 
 
 # Archivo de configuración
@@ -160,10 +160,7 @@ def base_parser(version):
         action='version',
         version='%(prog)s ' + version,
         help='muestra la versión del programa y sale')
-    base.add_argument(
-        '--prog',
-        default=base.prog,
-        help=argparse.SUPPRESS)
+    base.add_argument('--prog', default=base.prog, help=argparse.SUPPRESS)
 
     return base
 
@@ -233,7 +230,8 @@ def ws_sr_padron_parser(base):
         type=lambda x: validation.check_cli(
             base, type='cuit', value=x, name='persona'),
         help='CUIT a ser consultada en el padrón de la AFIP',
-        dest='person')
+        dest='person',
+        metavar='')
     exclusive.add_argument(
         '--tabla',
         type=lambda x: validation.check_cli(
@@ -241,7 +239,8 @@ def ws_sr_padron_parser(base):
         help='tabla a ser consultada en el padrón de la AFIP '
              '(sólo válido con alcance = 100). '
              'Valores soportados:\n- ' + '\n- '.join(a100_collections),
-        dest='table')
+        dest='table',
+        metavar='')
 
     return base
 
@@ -257,7 +256,10 @@ def wsfe_parser(base):
     exclusive = required.add_mutually_exclusive_group(required=True)
 
     # Tupla de tipos de comprobantes habilitados
-    voucher_type = ('CAE', 'CAEA')
+    voucher_type = ('solicitar', 'consultar', 'informar_sin_movimiento',
+                    'consultar_sin_movimiento', 'informar_comprobantes',
+                    'ultimo_autorizado', 'cantidad_registros',
+                    'consultar_comprobante')
 
     # Tupla de parámetros habilitados
     param_type = ('comprobante', 'concepto', 'documento', 'iva', 'monedas',
@@ -270,14 +272,16 @@ def wsfe_parser(base):
             base, type='list', value=x, name='comprobante', list=voucher_type),
         help='tipo de comprobante a ser autorizado. '
              'Valores soportados:\n- ' + '\n- '.join(voucher_type),
-        dest='voucher')
+        dest='voucher',
+        metavar='')
     exclusive.add_argument(
         '--parametro',
         type=lambda x: validation.check_cli(
             base, type='list', value=x, name='parametro', list=param_type),
         help='parámetro a ser consultado en las tablas de AFIP. '
              'Valores soportados:\n- ' + '\n- '.join(param_type),
-        dest='parameter')
+        dest='parameter',
+        metavar='')
 
     return base
 
@@ -295,8 +299,7 @@ def cli_parser(version):
     base = base_parser(version)
 
     # Llamo a la función del parser según el script que se está ejecutando
-    parser = getattr(sys.modules[__name__],
-                     '%s_parser' % base.prog[:-3])(base)
+    parser = getattr(sys.modules[__name__], '%s_parser' % base.prog[:-3])(base)
 
     # Parseo la línea de comandos donde args son los parámetros conocidos y
     # extra el resto de los parámetros
@@ -311,8 +314,8 @@ def cli_parser(version):
 
     # Si extra no es vacío incorporo los parámetros a la lista de argumentos
     if extra:
-        args.update(
-            {extra[i][2:]: extra[i+1] for i in range(0, len(extra), 2)})
+        args.update({extra[i][2:]: extra[i + 1]
+                     for i in range(0, len(extra), 2)})
 
     # Incorporo el nombre del web service si este no está definido
     if 'web_service' not in args:
